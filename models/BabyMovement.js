@@ -1,33 +1,30 @@
-const { DataTypes } = require("sequelize");
-
-module.exports = (sequelize) => {
-  const BabyMovement = sequelize.define("BabyMovement", {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
+module.exports = (sequelize, DataTypes) => {
+  const BabyMovement = sequelize.define(
+    "BabyMovement",
+    {
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true,
+      },
+      pregnancyId: { type: DataTypes.UUID, allowNull: false },
+      userId: { type: DataTypes.UUID, allowNull: false },
+      startedAt: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+      endedAt: { type: DataTypes.DATE, allowNull: true },
+      kickCount: { type: DataTypes.INTEGER, defaultValue: 0 },
+      durationSeconds: { type: DataTypes.INTEGER, allowNull: true },
+      notes: { type: DataTypes.TEXT, allowNull: true },
     },
+    { tableName: "baby_movements" }
+  );
 
-    date: {
-      type: DataTypes.DATEONLY,
-      allowNull: false,
-    },
+  BabyMovement.associate = (models) => {
+    BabyMovement.belongsTo(models.Pregnancy, { foreignKey: "pregnancyId", as: "pregnancy" });
+    models.Pregnancy.hasMany(BabyMovement, { foreignKey: "pregnancyId", as: "movements", onDelete: "CASCADE" });
 
-    time: {
-      type: DataTypes.TIME,
-      allowNull: true,
-    },
-
-    movementCount: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-
-    notes: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-  });
+    BabyMovement.belongsTo(models.User, { foreignKey: "userId", as: "user" });
+    models.User.hasMany(BabyMovement, { foreignKey: "userId", as: "babyMovements", onDelete: "CASCADE" });
+  };
 
   return BabyMovement;
 };

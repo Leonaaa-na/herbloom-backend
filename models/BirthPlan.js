@@ -1,27 +1,39 @@
-const { DataTypes } = require("sequelize");
-module.exports = (sequelize) => {
-  const BirthPlan = sequelize.define("BirthPlan", {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
+module.exports = (sequelize, DataTypes) => {
+  const BirthPlan = sequelize.define(
+    "BirthPlan",
+    {
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true,
+      },
+      pregnancyId: { type: DataTypes.UUID, allowNull: false, unique: true },
+      userId: { type: DataTypes.UUID, allowNull: false },
+      hospitalName: { type: DataTypes.STRING, allowNull: true },
+      hospitalAddress: { type: DataTypes.STRING, allowNull: true },
+      hospitalPhone: { type: DataTypes.STRING, allowNull: true },
+      doctorName: { type: DataTypes.STRING, allowNull: true },
+      birthPartner: { type: DataTypes.STRING, allowNull: true },
+      preferredDeliveryType: {
+        type: DataTypes.ENUM("vaginal", "c_section", "undecided"),
+        defaultValue: "undecided",
+      },
+      painReliefPreferences: { type: DataTypes.ARRAY(DataTypes.STRING), defaultValue: [] },
+      hospitalBagChecklist: { type: DataTypes.JSONB, defaultValue: [] }, // [{ item: "Nappies", packed: true }]
+      hospitalBagPacked: { type: DataTypes.BOOLEAN, defaultValue: false },
+      transportPlan: { type: DataTypes.TEXT, allowNull: true },
+      notes: { type: DataTypes.TEXT, allowNull: true },
     },
-    hospital: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    doctor: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    deliveryPreference: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    notes: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-  });
+    { tableName: "birth_plans" }
+  );
+
+  BirthPlan.associate = (models) => {
+    BirthPlan.belongsTo(models.Pregnancy, { foreignKey: "pregnancyId", as: "pregnancy" });
+    models.Pregnancy.hasOne(BirthPlan, { foreignKey: "pregnancyId", as: "birthPlan", onDelete: "CASCADE" });
+
+    BirthPlan.belongsTo(models.User, { foreignKey: "userId", as: "user" });
+    models.User.hasMany(BirthPlan, { foreignKey: "userId", as: "birthPlans", onDelete: "CASCADE" });
+  };
+
   return BirthPlan;
 };

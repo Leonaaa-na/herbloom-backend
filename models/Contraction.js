@@ -1,38 +1,29 @@
-const { DataTypes } = require("sequelize");
-
-module.exports = (sequelize) => {
-  const Contraction = sequelize.define("Contraction", {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
+module.exports = (sequelize, DataTypes) => {
+  const Contraction = sequelize.define(
+    "Contraction",
+    {
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true,
+      },
+      sessionId: { type: DataTypes.UUID, allowNull: false },
+      startedAt: { type: DataTypes.DATE, allowNull: false },
+      endedAt: { type: DataTypes.DATE, allowNull: true },
+      durationSeconds: { type: DataTypes.INTEGER, allowNull: true },
+      intervalSeconds: { type: DataTypes.INTEGER, allowNull: true }, // gap since the previous one
+      intensity: {
+        type: DataTypes.ENUM("mild", "moderate", "strong"),
+        allowNull: true,
+      },
     },
+    { tableName: "contractions" }
+  );
 
-    date: {
-      type: DataTypes.DATEONLY,
-      allowNull: false,
-    },
-
-    startTime: {
-      type: DataTypes.TIME,
-      allowNull: false,
-    },
-
-    endTime: {
-      type: DataTypes.TIME,
-      allowNull: true,
-    },
-
-    duration: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-
-    notes: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-  });
+  Contraction.associate = (models) => {
+    Contraction.belongsTo(models.ContractionSession, { foreignKey: "sessionId", as: "session" });
+    models.ContractionSession.hasMany(Contraction, { foreignKey: "sessionId", as: "contractions", onDelete: "CASCADE" });
+  };
 
   return Contraction;
 };
