@@ -2,6 +2,7 @@ const { Reminder, NotificationSetting, Cycle, Appointment, Medication, Op } = re
 const ApiError = require("../utils/ApiError");
 const notify = require("../utils/notify");
 const { addDays, today } = require("../utils/date");
+const { FREE_LIMITS } = require("../config/plans");
 
 const SETTING_FOR_TYPE = {
   period: "periodNotifications",
@@ -14,7 +15,23 @@ const SETTING_FOR_TYPE = {
 
 // ---------- User CRUD ----------
 
-const createReminder = (userId, data) => Reminder.create({ ...data, userId });
+const createReminder = async (userId, data, isPremium = false) => {
+  // Advanced reminders & notifications is a premium feature
+  if (!isPremium) {
+    const active = await Reminder.count({ where: { userId, completed: false, automatic: false } });
+    if (active >= FREE_LIMITS.activeReminders) {
+      const err = new ApiError(403, `Free accounts can have ${FREE_LIMITS.activeReminders} active reminders. Upgrade for unlimited.`);
+      err.upgradeRequired = true;
+      throw err;
+    }
+    if (data.repeat && data.repeat !== "none") {
+      const err = new ApiError(403, "Repeating reminders are a Premium feature");
+      err.upgradeRequired = true;
+      throw err;
+    }
+  }
+  return Reminder.create({ ...data, userId });
+};
 
 // ?type=&completed=true|false&upcoming=true
 const getReminders = (userId, { type, completed, upcoming } = {}) => {

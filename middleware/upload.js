@@ -2,6 +2,8 @@ const multer = require("multer");
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const cloudinary = require("../config/cloudinary");
 
+const MAX_SIZE_MB = process.env.MAX_UPLOAD_MB ? Number(process.env.MAX_UPLOAD_MB) : 5;
+
 // makeUploader("articles") → files land in the herbloom/articles folder on Cloudinary
 const makeUploader = (folder, { documents = false } = {}) => {
   const storage = new CloudinaryStorage({
@@ -12,7 +14,7 @@ const makeUploader = (folder, { documents = false } = {}) => {
       resource_type: "auto",
     },
   });
-  return multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } }); // 5 MB
+  return multer({ storage, limits: { fileSize: MAX_SIZE_MB * 1024 * 1024 } });
 };
 
 // After upload:  req.file.path = the URL,  req.file.filename = the public_id (needed to delete later)

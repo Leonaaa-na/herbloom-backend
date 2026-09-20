@@ -1,4 +1,5 @@
-const { Conversation, Message, Professional, Notification, Op } = require("../models");
+const { Op, Sequelize } = require("sequelize");
+const { Conversation, Message, Professional, Notification } = require("../models");
 const ApiError = require("../utils/ApiError");
 
 const CONVERSATION_INCLUDE = [
@@ -40,13 +41,20 @@ const getConversations = async (user) => {
   }
   const convos = await Conversation.findAll({ where, include: CONVERSATION_INCLUDE, order: [["lastMessageAt", "DESC NULLS LAST"]] });
 
-  // Unread count per thread
-  return Promise.all(
-    convos.map(async (c) => {
-      const unread = await Message.count({ where: { conversationId: c.id, isRead: false, senderId: { [Op.ne]: user.id } } });
-      return { ...c.toJSON(), unreadCount: unread };
-    })
-  );
+  // Batch unread counts in a single query
+  const convoIds = convos.map((c) => c.id);
+  const unreadMap = {};
+  if (convoIds.length) {
+    const counts = await Message.findAll({
+      where: { conversationId: { [Op.in]: convoIds }, isRead: false, senderId: { [Op.ne]: user.id } },
+      group: ["conversationId"],
+      attributes: ["conversationId", [Sequelize.fn("COUNT", Sequelize.col("*")), "count"]],
+      raw: true,
+    });
+    for (const row of counts) unreadMap[row.conversationId] = Number(row.count);
+  }
+
+  return convos.map((c) => ({ ...c.toJSON(), unreadCount: unreadMap[c.id] || 0 }));
 };
 
 const getMessages = async (user, conversationId, { before, limit = 50 } = {}) => {

@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { sequelize, User, Profile, NotificationSetting, Op } = require("../models");
 const ApiError = require("../utils/ApiError");
-const { sendEmail } = require("../config/mailer");
+const { sendEmail, escapeHtml } = require("../config/mailer");
 
 const signToken = (user) =>
   jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, {
@@ -108,7 +108,7 @@ const forgotPassword = async (email) => {
     to: user.email,
     subject: "Your HerBloom password reset code",
     html: `
-      <p>Hi ${user.name},</p>
+      <p>Hi ${escapeHtml(user.name)},</p>
       <p>Your password reset code is:</p>
       <h2 style="letter-spacing:4px">${code}</h2>
       <p>It expires in 15 minutes. If you didn't ask for this, you can ignore this email.</p>

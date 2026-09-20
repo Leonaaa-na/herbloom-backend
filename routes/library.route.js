@@ -5,6 +5,7 @@ const auth = require("../middleware/auth");
 const optionalAuth = require("../middleware/optionalAuth");
 const role = require("../middleware/role");
 const validate = require("../middleware/validate");
+const { withPremium } = require("../middleware/premium");
 const { uploadArticleImage } = require("../middleware/upload");
 
 const router = express.Router();
@@ -17,11 +18,11 @@ router.delete("/categories/:id", auth, role("admin"), controller.deleteCategory)
 
 // Saved — logged-in user (must be above /articles/:slug)
 router.get("/saved", auth, controller.getSavedArticles);
-router.post("/articles/:id/save", auth, controller.toggleSave);
+router.post("/articles/:id/save", auth, withPremium, controller.toggleSave); // free cap: 5
 
 // Articles — anyone can read, admin + verified professionals write
 router.get("/articles", controller.getArticles);
-router.get("/articles/:slug", optionalAuth, controller.getArticleBySlug);
+router.get("/articles/:slug", optionalAuth, withPremium, controller.getArticleBySlug); // premium content locked
 router.post(
   "/articles",
   auth, role("admin", "professional"),

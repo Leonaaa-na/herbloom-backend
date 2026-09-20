@@ -27,7 +27,13 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.ENUM("menstrual", "trying_to_conceive", "pregnant", "postpartum"),
         defaultValue: "menstrual",
       },
+      // App settings (AppSettings.tsx)
+      theme: { type: DataTypes.ENUM("light", "dark", "system"), defaultValue: "system" },
       language: { type: DataTypes.STRING, defaultValue: "en" },
+      dateFormat: { type: DataTypes.STRING, defaultValue: "DD/MM/YYYY" },
+      weekStartsOn: { type: DataTypes.ENUM("sunday", "monday"), defaultValue: "monday" },
+      units: { type: DataTypes.ENUM("metric", "imperial"), defaultValue: "metric" },
+      discreetMode: { type: DataTypes.BOOLEAN, defaultValue: false }, // hides health wording in notifications
     },
     { tableName: "profiles" }
   );

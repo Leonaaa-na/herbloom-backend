@@ -26,7 +26,7 @@ const deleteCategory = async (req, res) => {
 // Articles
 const getArticles = async (req, res) => res.json({ success: true, data: await service.getArticles(req.query) });
 const getArticleBySlug = async (req, res) =>
-  res.json({ success: true, data: await service.getArticleBySlug(req.params.slug, req.user ? req.user.id : null) });
+  res.json({ success: true, data: await service.getArticleBySlug(req.params.slug, req.user ? req.user.id : null, req.isPremium) });
 const createArticle = async (req, res) =>
   res.status(201).json({ success: true, message: "Article published", data: await service.createArticle(req.user, pick(parseTags(req.body), ARTICLE_FIELDS), req.file) });
 const updateArticle = async (req, res) =>
@@ -38,7 +38,7 @@ const deleteArticle = async (req, res) => {
 
 // Saved
 const toggleSave = async (req, res) => {
-  const result = await service.toggleSave(req.user.id, req.params.id);
+  const result = await service.toggleSave(req.user.id, req.params.id, req.isPremium);
   res.json({ success: true, message: result.saved ? "Article saved" : "Removed from saved", data: result });
 };
 const getSavedArticles = async (req, res) => res.json({ success: true, data: await service.getSavedArticles(req.user.id) });

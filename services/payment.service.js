@@ -3,19 +3,22 @@ const paystack = require("../config/paystack");
 const { Payment, Subscription, Appointment } = require("../models");
 const ApiError = require("../utils/ApiError");
 const notify = require("../utils/notify");
-
-// GHS prices — adjust to whatever you're charging
-const PLAN_PRICES = { monthly: 20, yearly: 200 };
+const { PLANS, PREMIUM_FEATURES } = require("../config/plans");
 
 const toPesewas = (ghs) => Math.round(Number(ghs) * 100);
+const findPlan = (id) => PLANS.find((p) => p.id === id);
+
+// What PremiumPlans.tsx and PremiumFeatures.tsx fetch
+const getPlans = () => ({ plans: PLANS, features: PREMIUM_FEATURES });
 
 const initialize = async (user, { purpose = "subscription", plan, appointmentId, amount }) => {
   let payAmount = amount;
   const metadata = { purpose, userId: user.id };
 
   if (purpose === "subscription") {
-    if (!plan || !PLAN_PRICES[plan]) throw new ApiError(400, "Choose a valid plan: monthly or yearly");
-    payAmount = PLAN_PRICES[plan];
+    const selected = findPlan(plan);
+    if (!selected) throw new ApiError(400, "Choose a valid plan: monthly or yearly");
+    payAmount = selected.price;
     metadata.plan = plan;
   }
 
@@ -62,14 +65,16 @@ const applySuccess = async (payment) => {
   await payment.update({ status: "success", paidAt: new Date() });
 
   if (payment.purpose === "subscription") {
-    const plan = payment.gatewayResponse?.metadata?.plan || "monthly";
-    const days = plan === "yearly" ? 365 : 30;
+    const planId = payment.gatewayResponse?.metadata?.plan || "monthly";
+    const selected = findPlan(planId) || findPlan("monthly");
     const existing = await Subscription.findOne({ where: { userId: payment.userId, status: "active" } });
-    const startDate = existing && new Date(existing.endDate) > new Date() ? existing.endDate : new Date();
-    const endDate = new Date(new Date(startDate).getTime() + days * 86400000);
 
-    if (existing) await existing.update({ plan, endDate, paymentId: payment.id });
-    else await Subscription.create({ userId: payment.userId, paymentId: payment.id, plan, status: "active", startDate: new Date(), endDate });
+    // If they're still subscribed, add the new time onto the end
+    const startFrom = existing && new Date(existing.endDate) > new Date() ? new Date(existing.endDate) : new Date();
+    const endDate = new Date(startFrom.getTime() + selected.durationDays * 86400000);
+
+    if (existing) await existing.update({ plan: planId, endDate, paymentId: payment.id });
+    else await Subscription.create({ userId: payment.userId, paymentId: payment.id, plan: planId, status: "active", startDate: new Date(), endDate });
   }
 
   await notify(payment.userId, { title: "Payment successful", body: `GHS ${payment.amount} — ${payment.purpose}`, type: "payment", data: { paymentId: payment.id } });
@@ -83,7 +88,6 @@ const applyFailure = async (payment, status = "failed") => {
   return payment;
 };
 
-// Frontend calls this on the callback page to confirm the result
 const verify = async (user, reference) => {
   const payment = await Payment.findOne({ where: { reference, userId: user.id } });
   if (!payment) throw new ApiError(404, "Payment not found");
@@ -99,7 +103,6 @@ const verify = async (user, reference) => {
   return applyFailure(payment, tx.status === "abandoned" ? "abandoned" : "failed");
 };
 
-// Paystack calls this directly — the reliable source of truth
 const handleWebhookEvent = async (event) => {
   if (!["charge.success", "charge.failed"].includes(event.event)) return;
 
@@ -120,12 +123,19 @@ const verifySignature = (rawBody, signature) => {
 
 const getMyPayments = (userId) => Payment.findAll({ where: { userId }, order: [["createdAt", "DESC"]] });
 
-const getMySubscription = (userId) => Subscription.findOne({ where: { userId, status: "active" }, order: [["createdAt", "DESC"]] });
+// PremiumStatus.tsx reads this
+const getMySubscription = async (userId) => {
+  const sub = await Subscription.findOne({ where: { userId, status: "active" }, order: [["createdAt", "DESC"]] });
+  const isActive = !!sub && new Date(sub.endDate) > new Date();
+  const daysLeft = isActive ? Math.ceil((new Date(sub.endDate) - new Date()) / 86400000) : 0;
+  return { subscription: sub, isPremium: isActive, daysLeft, plan: isActive ? sub.plan : "free" };
+};
 
 const cancelSubscription = async (userId) => {
   const sub = await Subscription.findOne({ where: { userId, status: "active" } });
   if (!sub) throw new ApiError(404, "No active subscription");
+  // Turns off renewal but they keep access until endDate
   return sub.update({ autoRenew: false });
 };
 
-module.exports = { initialize, verify, handleWebhookEvent, verifySignature, getMyPayments, getMySubscription, cancelSubscription };
+module.exports = { getPlans, initialize, verify, handleWebhookEvent, verifySignature, getMyPayments, getMySubscription, cancelSubscription };

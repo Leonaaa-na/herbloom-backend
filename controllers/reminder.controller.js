@@ -4,7 +4,7 @@ const pick = require("../utils/pick");
 const FIELDS = ["title", "type", "date", "time", "notes", "repeat", "completed"];
 
 const createReminder = async (req, res) =>
-  res.status(201).json({ success: true, message: "Reminder created", data: await service.createReminder(req.user.id, pick(req.body, FIELDS)) });
+  res.status(201).json({ success: true, message: "Reminder created", data: await service.createReminder(req.user.id, pick(req.body, FIELDS), req.isPremium) });
 const getReminders = async (req, res) => res.json({ success: true, data: await service.getReminders(req.user.id, req.query) });
 const getReminder = async (req, res) => res.json({ success: true, data: await service.getReminder(req.user.id, req.params.id) });
 const updateReminder = async (req, res) =>

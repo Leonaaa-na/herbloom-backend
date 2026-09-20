@@ -1,5 +1,4 @@
 const { Sequelize } = require("sequelize");
-require("dotenv").config();
 
 const sequelize = new Sequelize(
   process.env.DB_NAME,
@@ -22,8 +21,17 @@ const connectDB = async () => {
     require("../models"); // load every model + association before syncing
 
     const mode = process.env.DB_SYNC || "safe";
-    const options =
-      mode === "force" ? { force: true } : mode === "alter" ? { alter: true } : {};
+    const isProd = process.env.NODE_ENV === "production";
+    let options;
+    if (mode === "force") {
+      if (isProd) throw new Error("DB_SYNC=force is not allowed in production");
+      options = { force: true };
+    } else if (mode === "alter") {
+      if (isProd) throw new Error("DB_SYNC=alter is not allowed in production");
+      options = { alter: true };
+    } else {
+      options = {};
+    }
 
     await sequelize.sync(options);
     console.log(`Database synchronized successfully (${mode}).`);

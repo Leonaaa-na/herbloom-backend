@@ -1,6 +1,6 @@
 const { PartnerShare, User, Cycle, CycleLog, Pregnancy, Appointment } = require("../models");
 const ApiError = require("../utils/ApiError");
-const { sendEmail } = require("../config/mailer");
+const { sendEmail, escapeHtml } = require("../config/mailer");
 
 // Owner invites a partner by email → gets a share code
 const invitePartner = async (owner, { partnerEmail, permissions }) => {
@@ -14,10 +14,10 @@ const invitePartner = async (owner, { partnerEmail, permissions }) => {
   try {
     await sendEmail({
       to: partnerEmail,
-      subject: `${owner.name} wants to share their HerBloom journey with you`,
+      subject: `${escapeHtml(owner.name)} wants to share their HerBloom journey with you`,
       html: `
         <p>Hi,</p>
-        <p>${owner.name} invited you to follow their cycle on HerBloom.</p>
+        <p>${escapeHtml(owner.name)} invited you to follow their cycle on HerBloom.</p>
         <p>Create an account (or log in) and enter this code under <b>Partner Sharing</b>:</p>
         <h2 style="letter-spacing:4px">${share.shareCode}</h2>
       `,

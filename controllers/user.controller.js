@@ -3,7 +3,8 @@ const pick = require("../utils/pick");
 
 const PROFILE_FIELDS = [
   "username", "dateOfBirth", "bio", "city", "country", "heightCm", "weightKg", "bloodGroup",
-  "averageCycleLength", "averagePeriodLength", "lastPeriodDate", "lifeStage", "language",
+  "averageCycleLength", "averagePeriodLength", "lastPeriodDate", "lifeStage",
+  "theme", "language", "dateFormat", "weekStartsOn", "units", "discreetMode",
 ];
 
 const SETTINGS_FIELDS = [

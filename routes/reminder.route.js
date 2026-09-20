@@ -3,6 +3,7 @@ const { body } = require("express-validator");
 const controller = require("../controllers/reminder.controller");
 const auth = require("../middleware/auth");
 const validate = require("../middleware/validate");
+const { withPremium } = require("../middleware/premium");
 
 const router = express.Router();
 router.use(auth);
@@ -16,7 +17,7 @@ const rules = [
 ];
 
 router.post("/sync", controller.sync);
-router.post("/", rules, validate, controller.createReminder);
+router.post("/", withPremium, rules, validate, controller.createReminder); // free cap: 3, no repeats
 router.get("/", controller.getReminders);
 router.get("/:id", controller.getReminder);
 router.put("/:id", controller.updateReminder);

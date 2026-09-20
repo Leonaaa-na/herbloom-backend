@@ -1,6 +1,7 @@
 const { Category, Article, SavedArticle, User, Op } = require("../models");
 const ApiError = require("../utils/ApiError");
 const cloudinary = require("../config/cloudinary");
+const { FREE_LIMITS } = require("../config/plans");
 
 // ---------- Categories ----------
 
@@ -53,10 +54,11 @@ const getArticles = async ({ category, search, tag, page = 1, limit = 12 } = {})
     offset,
   });
 
+  // Premium articles still appear in lists (with a lock badge) — the content is what's gated
   return { articles: rows, total: count, page: Number(page), pages: Math.ceil(count / Number(limit)) };
 };
 
-const getArticleBySlug = async (slug, userId = null) => {
+const getArticleBySlug = async (slug, userId = null, isPremium = false) => {
   const article = await Article.findOne({ where: { slug, isPublished: true }, include: ARTICLE_INCLUDE });
   if (!article) throw new ApiError(404, "Article not found");
 
@@ -65,7 +67,16 @@ const getArticleBySlug = async (slug, userId = null) => {
   let isSaved = false;
   if (userId) isSaved = !!(await SavedArticle.findOne({ where: { userId, articleId: article.id } }));
 
-  return { ...article.toJSON(), views: article.views + 1, isSaved };
+  const result = { ...article.toJSON(), views: article.views + 1, isSaved };
+
+  // Premium educational content: show the summary, hide the body
+  if (article.isPremium && !isPremium) {
+    result.content = null;
+    result.locked = true;
+    result.upgradeRequired = true;
+  }
+
+  return result;
 };
 
 const createArticle = async (author, data, file) => {
@@ -105,7 +116,7 @@ const deleteArticle = async (user, id) => {
 
 // ---------- Saved articles ----------
 
-const toggleSave = async (userId, articleId) => {
+const toggleSave = async (userId, articleId, isPremium = false) => {
   const article = await Article.findByPk(articleId);
   if (!article) throw new ApiError(404, "Article not found");
 
@@ -114,6 +125,17 @@ const toggleSave = async (userId, articleId) => {
     await existing.destroy();
     return { saved: false };
   }
+
+  // Unlimited saved health articles is a premium feature
+  if (!isPremium) {
+    const count = await SavedArticle.count({ where: { userId } });
+    if (count >= FREE_LIMITS.savedArticles) {
+      const err = new ApiError(403, `Free accounts can save up to ${FREE_LIMITS.savedArticles} articles. Upgrade for unlimited saves.`);
+      err.upgradeRequired = true;
+      throw err;
+    }
+  }
+
   await SavedArticle.create({ userId, articleId });
   return { saved: true };
 };

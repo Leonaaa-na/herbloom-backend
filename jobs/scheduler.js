@@ -1,6 +1,7 @@
 const cron = require("node-cron");
 const reminderService = require("../services/reminder.service");
 
+// NOTE: Ensure DB index on Reminder(completed, date, lastSentAt) for performance
 const start = () => {
   // Every minute: turn due reminders into notifications
   cron.schedule("* * * * *", async () => {

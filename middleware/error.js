@@ -23,6 +23,14 @@ const errorHandler = (err, req, res, next) => {
     status = 400;
     message = "Related record not found";
   }
+  if (err.name === "SequelizeConnectionError") {
+    status = 503;
+    message = "Database connection lost";
+  }
+  if (err.name === "SequelizeTimeoutError") {
+    status = 504;
+    message = "Database request timed out";
+  }
   if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
     status = 401;
     message = "Invalid or expired token";
@@ -30,7 +38,12 @@ const errorHandler = (err, req, res, next) => {
 
   if (status === 500) console.error(err); // only log real crashes
 
-  res.status(status).json({ success: false, message, ...(errors && { errors }) });
+  res.status(status).json({
+    success: false,
+    message,
+    ...(errors && { errors }),
+    ...(err.upgradeRequired && { upgradeRequired: true }), // frontend opens PremiumModal
+  });
 };
 
 module.exports = { notFound, errorHandler };
