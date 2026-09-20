@@ -12,7 +12,7 @@ const emergencyRoutes = require("./emergency.route");
 const reminderRoutes = require("./reminder.route");
 const notificationRoutes = require("./notification.route");
 const paymentRoutes = require("./payment.route");
-const insightsRoutes = require("./insights.route");
+const insightsRoutes = require("./insights.routes");
 
 module.exports = {
   userRoutes,
