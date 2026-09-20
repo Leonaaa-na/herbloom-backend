@@ -3,6 +3,7 @@ const { body, param } = require("express-validator");
 const controller = require("../controllers/cycle.controller");
 const auth = require("../middleware/auth");
 const validate = require("../middleware/validate");
+const { withPremium } = require("../middleware/premium");
 
 const router = express.Router();
 
@@ -23,7 +24,7 @@ const dateParam = [param("date").isISO8601().withMessage("date must be YYYY-MM-D
 
 // Fixed paths first, then the ones with :id
 router.get("/current", controller.getCurrentCycle);
-router.get("/insights", controller.getInsights);
+router.get("/insights", withPremium, controller.getInsights); // free: 3 months, premium: full
 
 router.post("/logs", logRules, validate, controller.saveLog);
 router.get("/logs", controller.getLogs);
@@ -31,7 +32,7 @@ router.get("/logs/:date", dateParam, validate, controller.getLogByDate);
 router.delete("/logs/:date", dateParam, validate, controller.deleteLog);
 
 router.post("/", cycleRules, validate, controller.createCycle);
-router.get("/", controller.getCycles);
+router.get("/", withPremium, controller.getCycles); // free: last 3 months
 router.get("/:id", controller.getCycleById);
 router.put("/:id", controller.updateCycle);
 router.delete("/:id", controller.deleteCycle);

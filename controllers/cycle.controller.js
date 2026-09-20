@@ -10,7 +10,7 @@ const createCycle = async (req, res) => {
 };
 
 const getCycles = async (req, res) => {
-  const cycles = await cycleService.getCycles(req.user.id, req.query.limit);
+  const cycles = await cycleService.getCycles(req.user.id, req.query.limit, req.isPremium);
   res.json({ success: true, data: cycles });
 };
 
@@ -20,7 +20,7 @@ const getCurrentCycle = async (req, res) => {
 };
 
 const getInsights = async (req, res) => {
-  const insights = await cycleService.getInsights(req.user.id);
+  const insights = await cycleService.getInsights(req.user.id, req.isPremium);
   res.json({ success: true, data: insights });
 };
 

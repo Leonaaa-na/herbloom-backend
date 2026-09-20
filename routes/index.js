@@ -12,12 +12,7 @@ const emergencyRoutes = require("./emergency.route");
 const reminderRoutes = require("./reminder.route");
 const notificationRoutes = require("./notification.route");
 const paymentRoutes = require("./payment.route");
-
-// API versioning: mount all routes under /api/v1
-const mountVersioned = (app, prefix, routes) => {
-  const v1 = `/api/v1${prefix}`;
-  app.use(v1, routes);
-};
+const insightsRoutes = require("./insights.route");
 
 module.exports = {
   userRoutes,
@@ -34,5 +29,5 @@ module.exports = {
   reminderRoutes,
   notificationRoutes,
   paymentRoutes,
-  mountVersioned,
+  insightsRoutes,
 };

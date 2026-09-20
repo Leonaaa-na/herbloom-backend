@@ -1,6 +1,7 @@
 const { Cycle, CycleLog, Profile, Op } = require("../models");
 const ApiError = require("../utils/ApiError");
 const { addDays, diffDays, today } = require("../utils/date");
+const { FREE_LIMITS } = require("../config/plans");
 
 const LUTEAL_PHASE_DAYS = 14; // ovulation is ~14 days before the next period
 
@@ -77,8 +78,11 @@ const createCycle = async (userId, { startDate, endDate, notes }) => {
   return cycle;
 };
 
-const getCycles = async (userId, limit = 12) => {
-  return Cycle.findAll({ where: { userId }, order: [["startDate", "DESC"]], limit: Number(limit) });
+// Enhanced health history: free users see the last 3 months, premium sees everything
+const getCycles = async (userId, limit = 12, isPremium = false) => {
+  const where = { userId };
+  if (!isPremium) where.startDate = { [Op.gte]: addDays(today(), -FREE_LIMITS.historyMonths * 30) };
+  return Cycle.findAll({ where, order: [["startDate", "DESC"]], limit: Number(limit) });
 };
 
 const getCycleById = async (userId, id) => {
@@ -182,32 +186,40 @@ const deleteLog = async (userId, date) => {
 
 // ---------- Reports & insights ----------
 
-const getInsights = async (userId) => {
-  const cycles = await Cycle.findAll({ where: { userId }, order: [["startDate", "DESC"]], limit: 12 });
+const getInsights = async (userId, isPremium = false) => {
+  // Free users: last 3 months. Premium: everything.
+  const cycleWhere = { userId };
+  const logCutoff = isPremium ? addDays(today(), -365) : addDays(today(), -FREE_LIMITS.historyMonths * 30);
+  if (!isPremium) cycleWhere.startDate = { [Op.gte]: logCutoff };
+
+  const cycles = await Cycle.findAll({ where: cycleWhere, order: [["startDate", "DESC"]], limit: isPremium ? 24 : 6 });
   const lengths = cycles.filter((c) => c.cycleLength).map((c) => c.cycleLength);
   const periods = cycles.filter((c) => c.periodLength).map((c) => c.periodLength);
   const avg = (arr) => (arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null);
 
-  const logs = await CycleLog.findAll({ where: { userId, date: { [Op.gte]: addDays(today(), -90) } } });
+  const logs = await CycleLog.findAll({ where: { userId, date: { [Op.gte]: logCutoff } } });
 
   const count = (items) =>
-    Object.entries(
-      items.reduce((acc, item) => ({ ...acc, [item]: (acc[item] || 0) + 1 }), {})
-    )
+    Object.entries(items.reduce((acc, item) => ({ ...acc, [item]: (acc[item] || 0) + 1 }), {}))
       .sort((a, b) => b[1] - a[1])
       .map(([name, total]) => ({ name, total }));
 
   return {
+    isPremium,
+    historyMonths: isPremium ? "all" : FREE_LIMITS.historyMonths,
     totalCycles: cycles.length,
     averageCycleLength: avg(lengths),
     shortestCycle: lengths.length ? Math.min(...lengths) : null,
     longestCycle: lengths.length ? Math.max(...lengths) : null,
     isRegular: lengths.length >= 3 && Math.max(...lengths) - Math.min(...lengths) <= 7,
     averagePeriodLength: avg(periods),
-    daysLoggedLast90: logs.length,
+    daysLogged: logs.length,
     topSymptoms: count(logs.flatMap((l) => l.symptoms || [])).slice(0, 5),
     moods: count(logs.map((l) => l.mood).filter(Boolean)),
     flow: count(logs.map((l) => l.flow).filter((f) => f && f !== "none")),
+    // Tells the frontend to show the "unlock advanced" card
+    advancedAvailable: isPremium,
+    upgradeHint: isPremium ? null : "Upgrade for trend analysis, symptom patterns by phase, and full history",
   };
 };
 
