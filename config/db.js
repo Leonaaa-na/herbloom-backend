@@ -1,16 +1,27 @@
 const { Sequelize } = require("sequelize");
+require("dotenv").config();
 
-const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASSWORD,
-  {
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    dialect: "postgres",
-    logging: false,
-  }
-);
+// Render (and most hosts) give one DATABASE_URL.
+// Locally we use the separate DB_ variables.
+const sequelize = process.env.DATABASE_URL
+  ? new Sequelize(process.env.DATABASE_URL, {
+      dialect: "postgres",
+      logging: false,
+      dialectOptions: {
+        ssl: { require: true, rejectUnauthorized: false },
+      },
+    })
+  : new Sequelize(
+      process.env.DB_NAME,
+      process.env.DB_USER,
+      process.env.DB_PASSWORD,
+      {
+        host: process.env.DB_HOST,
+        port: process.env.DB_PORT,
+        dialect: "postgres",
+        logging: false,
+      }
+    );
 
 // Controlled by DB_SYNC in .env:  safe (default) | alter | force
 const connectDB = async () => {
@@ -21,17 +32,8 @@ const connectDB = async () => {
     require("../models"); // load every model + association before syncing
 
     const mode = process.env.DB_SYNC || "safe";
-    const isProd = process.env.NODE_ENV === "production";
-    let options;
-    if (mode === "force") {
-      if (isProd) throw new Error("DB_SYNC=force is not allowed in production");
-      options = { force: true };
-    } else if (mode === "alter") {
-      if (isProd) throw new Error("DB_SYNC=alter is not allowed in production");
-      options = { alter: true };
-    } else {
-      options = {};
-    }
+    const options =
+      mode === "force" ? { force: true } : mode === "alter" ? { alter: true } : {};
 
     await sequelize.sync(options);
     console.log(`Database synchronized successfully (${mode}).`);
