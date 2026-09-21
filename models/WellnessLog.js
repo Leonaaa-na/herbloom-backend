@@ -18,9 +18,14 @@ module.exports = (sequelize, DataTypes) => {
       waterMl: { type: DataTypes.INTEGER, allowNull: true },
       // Several activities per day: [{ id, type, duration, intensity, notes }]
       activities: { type: DataTypes.JSONB, defaultValue: [] },
-      // Worked out from activities, used by insights
       exerciseMinutes: { type: DataTypes.INTEGER, allowNull: true },
       exerciseType: { type: DataTypes.STRING, allowNull: true },
+      // Pregnancy Nutrition page
+      foodGroups: { type: DataTypes.ARRAY(DataTypes.STRING), defaultValue: [] }, // ["Whole grains", ...]
+      nutritionNotes: { type: DataTypes.TEXT, allowNull: true },
+      // Pregnancy Wellness page
+      gentleMovement: { type: DataTypes.BOOLEAN, defaultValue: false },
+      restDone: { type: DataTypes.BOOLEAN, defaultValue: false },
       context: {
         type: DataTypes.ENUM("cycle", "pregnancy", "postpartum", "general"),
         defaultValue: "general",

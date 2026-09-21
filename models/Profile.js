@@ -27,6 +27,9 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.ENUM("menstrual", "trying_to_conceive", "pregnant", "postpartum"),
         defaultValue: "menstrual",
       },
+      // Postpartum Transition page — kept on the profile so it survives after delivery
+      postpartumTopics: { type: DataTypes.ARRAY(DataTypes.STRING), defaultValue: [] },
+      postpartumNotes: { type: DataTypes.TEXT, allowNull: true },
       // App settings (AppSettings.tsx)
       theme: { type: DataTypes.ENUM("light", "dark", "system"), defaultValue: "system" },
       language: { type: DataTypes.STRING, defaultValue: "en" },

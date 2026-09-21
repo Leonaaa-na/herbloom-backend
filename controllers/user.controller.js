@@ -4,6 +4,7 @@ const pick = require("../utils/pick");
 const PROFILE_FIELDS = [
   "username", "dateOfBirth", "bio", "city", "country", "heightCm", "weightKg", "bloodGroup",
   "averageCycleLength", "averagePeriodLength", "lastPeriodDate", "lifeStage",
+  "postpartumTopics", "postpartumNotes",
   "theme", "language", "dateFormat", "weekStartsOn", "units", "discreetMode",
 ];
 

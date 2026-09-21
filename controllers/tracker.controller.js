@@ -5,7 +5,9 @@ const MED_FIELDS = ["name", "dosage", "frequency", "times", "context", "startDat
 const NUTRITION_FIELDS = ["date", "mealType", "description", "calories", "protein", "carbs", "fat", "context", "notes"];
 const WELLNESS_FIELDS = [
   "date", "mood", "energyLevel", "stressLevel", "sleepHours",
-  "waterGlasses", "waterMl", "activities", "exerciseMinutes", "exerciseType", "context", "notes",
+  "waterGlasses", "waterMl", "activities", "exerciseMinutes", "exerciseType",
+  "foodGroups", "nutritionNotes", "gentleMovement", "restDone",
+  "context", "notes",
 ];
 const NOTE_FIELDS = ["title", "content", "context", "date", "isPinned"];
 

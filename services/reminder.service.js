@@ -144,7 +144,7 @@ const syncAutomaticReminders = async (userId = null) => {
     );
   }
 
-  // 2. Appointments in the next 14 days → the day before at 09:00
+  // 2. Appointments in the next 14 days (booked AND personal) → the day before at 09:00
   const appointments = await Appointment.findAll({
     where: {
       ...scope,
@@ -155,10 +155,11 @@ const syncAutomaticReminders = async (userId = null) => {
   });
   for (const a of appointments) {
     const dayBefore = addDays(a.scheduledAt, -1);
+    const who = (a.professional && a.professional.name) || a.providerName || "your provider";
     const when = new Date(a.scheduledAt).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
     await upsertAuto(
       { userId: a.userId, type: "appointment", referenceId: a.id },
-      { title: `Appointment with ${a.professional.name}`, notes: `${when}${a.location ? ` · ${a.location}` : ""}`, date: dayBefore < today() ? today() : dayBefore, time: "09:00" }
+      { title: `Appointment with ${who}`, notes: `${when}${a.location ? ` · ${a.location}` : ""}`, date: dayBefore < today() ? today() : dayBefore, time: "09:00" }
     );
   }
   const liveAppointmentIds = appointments.map((a) => a.id);

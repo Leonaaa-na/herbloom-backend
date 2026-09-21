@@ -8,7 +8,11 @@ module.exports = (sequelize, DataTypes) => {
         primaryKey: true,
       },
       userId: { type: DataTypes.UUID, allowNull: false },
-      professionalId: { type: DataTypes.UUID, allowNull: false },
+      // Booked with a registered professional → professionalId is set.
+      // Personal appointment (user typed "Dr. Mensah" / "ABC Clinic") → providerName is set instead.
+      professionalId: { type: DataTypes.UUID, allowNull: true },
+      providerName: { type: DataTypes.STRING, allowNull: true },
+      isPersonal: { type: DataTypes.BOOLEAN, defaultValue: false },
       scheduledAt: { type: DataTypes.DATE, allowNull: false },
       durationMinutes: { type: DataTypes.INTEGER, defaultValue: 30 },
       type: {
