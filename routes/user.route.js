@@ -1,7 +1,9 @@
 const express = require("express");
 const { body } = require("express-validator");
 const controller = require("../controllers/user.controller");
+const contactController = require("../controllers/contact.controller");
 const auth = require("../middleware/auth");
+const optionalAuth = require("../middleware/optionalAuth");
 const validate = require("../middleware/validate");
 const { uploadAvatar } = require("../middleware/upload");
 
@@ -35,11 +37,19 @@ const resetRules = [
   body("newPassword").matches(passwordRegex).withMessage("New password must be 8+ chars with uppercase, lowercase, and a number"),
 ];
 
+const contactRules = [
+  body("name").trim().notEmpty().withMessage("Please enter your name").isLength({ max: 100 }),
+  body("email").isEmail().withMessage("Please enter a valid email address"),
+  body("subject").optional({ checkFalsy: true }).trim().isLength({ max: 150 }).withMessage("Subject is too long"),
+  body("message").trim().isLength({ min: 10, max: 3000 }).withMessage("Message must be between 10 and 3000 characters"),
+];
+
 // Public
 router.post("/register", registerRules, validate, controller.register);
 router.post("/login", loginRules, validate, controller.login);
 router.post("/forgot-password", forgotRules, validate, controller.forgotPassword);
 router.post("/reset-password", resetRules, validate, controller.resetPassword);
+router.post("/contact", optionalAuth, contactRules, validate, contactController.submit); // Contact page
 
 // Logged-in only
 router.get("/me", auth, controller.getMe);
