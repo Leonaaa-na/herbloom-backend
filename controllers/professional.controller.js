@@ -3,7 +3,8 @@ const pick = require("../utils/pick");
 
 const PROFILE_FIELDS = [
   "name", "title", "specialty", "hospital", "address", "city", "phone", "email", "bio",
-  "yearsOfExperience", "languages", "consultationFee", "availableDays", "isAvailable", "acceptsChat",
+  "yearsOfExperience", "qualifications", "consultationAreas", "languages",
+  "consultationFee", "availableDays", "isAvailable", "acceptsChat",
 ];
 
 const getProfessionals = async (req, res) => res.json({ success: true, data: await service.getProfessionals(req.query) });

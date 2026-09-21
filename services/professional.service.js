@@ -1,7 +1,8 @@
-const { Professional, User, Op, sequelize } = require("../models");
+const { Professional, Op, sequelize } = require("../models");
 const ApiError = require("../utils/ApiError");
 const cloudinary = require("../config/cloudinary");
 
+// Never sent to the public: licence number, uploaded documents, who approved them
 const PUBLIC_ATTRS = { exclude: ["licenseNumber", "verificationDocumentUrl", "verificationDocumentPublicId", "verifiedById"] };
 
 // ?specialty=&city=&search=&page=&limit=   (only verified ones are shown publicly)
@@ -14,17 +15,21 @@ const getProfessionals = async ({ specialty, city, search, page = 1, limit = 12 
       { name: { [Op.iLike]: `%${search}%` } },
       { specialty: { [Op.iLike]: `%${search}%` } },
       { hospital: { [Op.iLike]: `%${search}%` } },
+      { city: { [Op.iLike]: `%${search}%` } },
     ];
   }
-  const offset = (Number(page) - 1) * Number(limit);
+
+  const perPage = Math.min(Number(limit) || 12, 100);
+  const currentPage = Math.max(Number(page) || 1, 1);
+
   const { rows, count } = await Professional.findAndCountAll({
     where,
     attributes: PUBLIC_ATTRS,
     order: [["rating", "DESC"], ["name", "ASC"]],
-    limit: Number(limit),
-    offset,
+    limit: perPage,
+    offset: (currentPage - 1) * perPage,
   });
-  return { professionals: rows, total: count, page: Number(page), pages: Math.ceil(count / Number(limit)) };
+  return { professionals: rows, total: count, page: currentPage, pages: Math.ceil(count / perPage) };
 };
 
 const getSpecialties = async () => {

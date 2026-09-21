@@ -11,15 +11,17 @@ module.exports = (sequelize, DataTypes) => {
       name: { type: DataTypes.STRING, allowNull: false },
       title: { type: DataTypes.STRING, allowNull: true }, // Dr., Midwife
       specialty: { type: DataTypes.STRING, allowNull: false }, // Gynaecologist, Psychologist, Nutritionist...
-      hospital: { type: DataTypes.STRING, allowNull: true },
+      hospital: { type: DataTypes.STRING, allowNull: true }, // shown as "Organization"
       address: { type: DataTypes.STRING, allowNull: true },
       city: { type: DataTypes.STRING, allowNull: true },
       phone: { type: DataTypes.STRING, allowNull: true },
       email: { type: DataTypes.STRING, allowNull: true, validate: { isEmail: true } },
-      bio: { type: DataTypes.TEXT, allowNull: true },
+      bio: { type: DataTypes.TEXT, allowNull: true }, // "About"
       avatarUrl: { type: DataTypes.STRING, allowNull: true },
       avatarPublicId: { type: DataTypes.STRING, allowNull: true },
       yearsOfExperience: { type: DataTypes.INTEGER, allowNull: true },
+      qualifications: { type: DataTypes.ARRAY(DataTypes.STRING), defaultValue: [] }, // ["MBChB", ...]
+      consultationAreas: { type: DataTypes.ARRAY(DataTypes.STRING), defaultValue: [] }, // ["Pregnancy Care", ...]
       languages: { type: DataTypes.ARRAY(DataTypes.STRING), defaultValue: [] },
       consultationFee: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
       availableDays: { type: DataTypes.ARRAY(DataTypes.STRING), defaultValue: [] }, // ["Mon", "Wed"]
