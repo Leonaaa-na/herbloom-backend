@@ -1,3 +1,4 @@
+// Hospitals, clinics, pharmacies, ambulance, hotlines — admin-managed, searched by location
 module.exports = (sequelize, DataTypes) => {
   const Facility = sequelize.define(
     "Facility",
@@ -12,6 +13,9 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.ENUM("hospital", "clinic", "maternity_home", "pharmacy", "ambulance", "hotline", "police", "other"),
         allowNull: false,
       },
+      // Display label: "Teaching Hospital", "Medical Centre"… or for hotlines "medical" / "safety"
+      category: { type: DataTypes.STRING, allowNull: true },
+      description: { type: DataTypes.TEXT, allowNull: true },
       address: { type: DataTypes.STRING, allowNull: true },
       city: { type: DataTypes.STRING, allowNull: true },
       region: { type: DataTypes.STRING, allowNull: true },

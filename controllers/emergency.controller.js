@@ -3,7 +3,10 @@ const pick = require("../utils/pick");
 
 const CONTACT_FIELDS = ["name", "phone", "relationship", "isPrimary"];
 const INFO_FIELDS = ["bloodGroup", "allergies", "medicalConditions", "currentMedications", "isPregnant", "pregnancyWeek", "doctorName", "doctorPhone", "preferredHospital", "notes"];
-const FACILITY_FIELDS = ["name", "type", "address", "city", "region", "phone", "emergencyPhone", "website", "latitude", "longitude", "is24Hours", "services", "isActive"];
+const FACILITY_FIELDS = [
+  "name", "type", "category", "description", "address", "city", "region", "phone", "emergencyPhone",
+  "website", "latitude", "longitude", "is24Hours", "services", "isActive",
+];
 
 // Contacts
 const getContacts = async (req, res) => res.json({ success: true, data: await service.getContacts(req.user.id) });
