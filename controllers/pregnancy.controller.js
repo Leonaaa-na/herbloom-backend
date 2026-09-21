@@ -2,10 +2,11 @@ const service = require("../services/pregnancy.service");
 const pick = require("../utils/pick");
 
 const PREGNANCY_FIELDS = ["lastMenstrualPeriod", "dueDate", "babyNickname", "isFirstPregnancy", "notes"];
-const HEALTH_FIELDS = ["date", "weightKg", "bloodPressure", "symptoms", "mood", "notes"];
+const HEALTH_FIELDS = ["date", "weightKg", "bloodPressure", "symptoms", "severity", "mood", "notes"];
 const BIRTH_PLAN_FIELDS = [
   "hospitalName", "hospitalAddress", "hospitalPhone", "doctorName", "birthPartner", "preferredDeliveryType",
-  "painReliefPreferences", "hospitalBagChecklist", "hospitalBagPacked", "transportPlan", "notes",
+  "painReliefPreferences", "birthPreferences", "hasHospitalChecklist", "hospitalBagChecklist",
+  "contacts", "transportPlan", "notes",
 ];
 const MILESTONE_FIELDS = ["title", "description", "date", "type"];
 
@@ -29,14 +30,16 @@ const deleteHealthLog = async (req, res) => { await service.deleteHealthLog(req.
 // Kick counter
 const startMovementSession = async (req, res) => created(res, await service.startMovementSession(req.user.id), "Session started");
 const addKick = async (req, res) => ok(res, await service.addKick(req.user.id, req.params.id));
-const endMovementSession = async (req, res) => ok(res, await service.endMovementSession(req.user.id, req.params.id, req.body), "Session ended");
+const endMovementSession = async (req, res) => ok(res, await service.endMovementSession(req.user.id, req.params.id, pick(req.body, ["kickCount", "notes"])), "Session saved");
 const getMovementSessions = async (req, res) => ok(res, await service.getMovementSessions(req.user.id));
+const deleteMovementSession = async (req, res) => { await service.deleteMovementSession(req.user.id, req.params.id); ok(res, null, "Session deleted"); };
+const clearMovementSessions = async (req, res) => { await service.clearMovementSessions(req.user.id); ok(res, null, "Movement history cleared"); };
 
 // Contraction timer
 const startContractionSession = async (req, res) => created(res, await service.startContractionSession(req.user.id), "Timer started");
 const addContraction = async (req, res) => created(res, await service.addContraction(req.user.id, req.params.sessionId, pick(req.body, ["startedAt", "endedAt", "intensity"])));
 const endContraction = async (req, res) => ok(res, await service.endContraction(req.user.id, req.params.sessionId, req.params.contractionId));
-const endContractionSession = async (req, res) => ok(res, await service.endContractionSession(req.user.id, req.params.sessionId, req.body), "Timer stopped");
+const endContractionSession = async (req, res) => ok(res, await service.endContractionSession(req.user.id, req.params.sessionId, pick(req.body, ["notes"])), "Timer stopped");
 const getContractionSessions = async (req, res) => ok(res, await service.getContractionSessions(req.user.id));
 const getContractionSession = async (req, res) => ok(res, await service.getContractionSession(req.user.id, req.params.sessionId));
 
@@ -57,7 +60,7 @@ const getWeek = async (req, res) => ok(res, await service.getWeek(Number(req.par
 module.exports = {
   setup, getCurrent, update, deliver, end, getHistory,
   createHealthLog, getHealthLogs, updateHealthLog, deleteHealthLog,
-  startMovementSession, addKick, endMovementSession, getMovementSessions,
+  startMovementSession, addKick, endMovementSession, getMovementSessions, deleteMovementSession, clearMovementSessions,
   startContractionSession, addContraction, endContraction, endContractionSession, getContractionSessions, getContractionSession,
   getBirthPlan, updateBirthPlan,
   createMilestone, getMilestones, updateMilestone, deleteMilestone,

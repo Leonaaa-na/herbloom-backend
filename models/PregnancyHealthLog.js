@@ -14,6 +14,7 @@ module.exports = (sequelize, DataTypes) => {
       weightKg: { type: DataTypes.FLOAT, allowNull: true },
       bloodPressure: { type: DataTypes.STRING, allowNull: true }, // "120/80"
       symptoms: { type: DataTypes.ARRAY(DataTypes.STRING), defaultValue: [] },
+      severity: { type: DataTypes.STRING, allowNull: true }, // "Mild" | "Moderate" | "Severe"
       mood: { type: DataTypes.STRING, allowNull: true },
       notes: { type: DataTypes.TEXT, allowNull: true },
     },

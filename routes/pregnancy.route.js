@@ -8,21 +8,25 @@ const router = express.Router();
 router.use(auth);
 
 const dateRule = (field) => body(field).isISO8601().withMessage(`${field} must be YYYY-MM-DD`);
+const optionalDate = (field) =>
+  body(field).optional({ values: "falsy" }).isISO8601().withMessage(`${field} must be YYYY-MM-DD`);
 
 // Setup / dashboard
-router.post("/", [body("lastMenstrualPeriod").optional().isISO8601(), body("dueDate").optional().isISO8601()], validate, controller.setup);
+router.post("/", [optionalDate("lastMenstrualPeriod"), optionalDate("dueDate")], validate, controller.setup);
 router.get("/current", controller.getCurrent);
-router.put("/current", controller.update);
+router.put("/current", [optionalDate("lastMenstrualPeriod"), optionalDate("dueDate")], validate, controller.update);
 router.post("/current/deliver", [body("deliveryType").optional().isIn(["vaginal", "c_section"])], validate, controller.deliver);
 router.post("/current/end", controller.end);
 router.get("/history", controller.getHistory);
 
-// Baby development (public reference data, but still logged-in)
+// Baby development (reference data)
 router.get("/development", controller.getAllWeeks);
 router.get("/development/:week", [param("week").isInt({ min: 1, max: 42 })], validate, controller.getWeek);
 
 // Health logs
-router.post("/health-logs", [dateRule("date")], validate, controller.createHealthLog);
+router.post("/health-logs",
+  [dateRule("date"), body("severity").optional({ values: "falsy" }).isIn(["Mild", "Moderate", "Severe"])],
+  validate, controller.createHealthLog);
 router.get("/health-logs", controller.getHealthLogs);
 router.put("/health-logs/:id", controller.updateHealthLog);
 router.delete("/health-logs/:id", controller.deleteHealthLog);
@@ -32,6 +36,8 @@ router.post("/movements/start", controller.startMovementSession);
 router.post("/movements/:id/kick", controller.addKick);
 router.post("/movements/:id/end", controller.endMovementSession);
 router.get("/movements", controller.getMovementSessions);
+router.delete("/movements", controller.clearMovementSessions); // clear all history
+router.delete("/movements/:id", controller.deleteMovementSession);
 
 // Contraction timer
 router.post("/contractions/start", controller.startContractionSession);

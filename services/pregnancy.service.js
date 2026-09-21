@@ -50,9 +50,14 @@ const getCurrent = async (userId) => {
   };
 };
 
+// Keep both dates in step: change one, the other follows (280 days apart)
 const update = async (userId, data) => {
   const pregnancy = await getActive(userId);
-  if (data.lastMenstrualPeriod && !data.dueDate) data.dueDate = addDays(data.lastMenstrualPeriod, 280);
+  if (data.lastMenstrualPeriod && !data.dueDate) {
+    data.dueDate = addDays(data.lastMenstrualPeriod, 280);
+  } else if (data.dueDate && !data.lastMenstrualPeriod) {
+    data.lastMenstrualPeriod = addDays(data.dueDate, -280);
+  }
   return pregnancy.update(data);
 };
 
@@ -74,7 +79,7 @@ const end = async (userId) => {
 
 const getHistory = (userId) => Pregnancy.findAll({ where: { userId }, order: [["createdAt", "DESC"]] });
 
-// ---------- Health logs (symptoms, weight, BP) ----------
+// ---------- Health logs (symptoms, severity, weight, BP) ----------
 
 const createHealthLog = async (userId, data) => {
   const pregnancy = await getActive(userId);
@@ -83,7 +88,10 @@ const createHealthLog = async (userId, data) => {
 
 const getHealthLogs = async (userId) => {
   const pregnancy = await getActive(userId);
-  return PregnancyHealthLog.findAll({ where: { pregnancyId: pregnancy.id }, order: [["date", "DESC"]] });
+  return PregnancyHealthLog.findAll({
+    where: { pregnancyId: pregnancy.id },
+    order: [["date", "DESC"], ["createdAt", "DESC"]],
+  });
 };
 
 const updateHealthLog = async (userId, id, data) => {
@@ -127,6 +135,20 @@ const endMovementSession = async (userId, id, { kickCount, notes } = {}) => {
 const getMovementSessions = async (userId) => {
   const pregnancy = await getActive(userId);
   return BabyMovement.findAll({ where: { pregnancyId: pregnancy.id }, order: [["startedAt", "DESC"]], limit: 30 });
+};
+
+const deleteMovementSession = async (userId, id) => {
+  const session = await BabyMovement.findOne({ where: { id, userId } });
+  if (!session) throw new ApiError(404, "Session not found");
+  await session.destroy();
+  return true;
+};
+
+// "Clear history" — every session for the current pregnancy
+const clearMovementSessions = async (userId) => {
+  const pregnancy = await getActive(userId);
+  await BabyMovement.destroy({ where: { pregnancyId: pregnancy.id, userId } });
+  return true;
 };
 
 // ---------- Contraction timer ----------
@@ -215,6 +237,13 @@ const getBirthPlan = async (userId) => {
 
 const updateBirthPlan = async (userId, data) => {
   const plan = await getBirthPlan(userId);
+
+  // Bag counts as packed when every item on the list is ticked
+  if (Array.isArray(data.hospitalBagChecklist)) {
+    const list = data.hospitalBagChecklist;
+    data.hospitalBagPacked = list.length > 0 && list.every((item) => item.completed || item.packed);
+  }
+
   return plan.update(data);
 };
 
@@ -256,7 +285,7 @@ const getWeek = async (week) => {
 module.exports = {
   setup, getCurrent, update, deliver, end, getHistory,
   createHealthLog, getHealthLogs, updateHealthLog, deleteHealthLog,
-  startMovementSession, addKick, endMovementSession, getMovementSessions,
+  startMovementSession, addKick, endMovementSession, getMovementSessions, deleteMovementSession, clearMovementSessions,
   startContractionSession, addContraction, endContraction, endContractionSession, getContractionSessions, getContractionSession,
   getBirthPlan, updateBirthPlan,
   createMilestone, getMilestones, updateMilestone, deleteMilestone,
