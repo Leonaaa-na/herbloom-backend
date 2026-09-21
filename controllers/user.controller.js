@@ -1,4 +1,5 @@
 const userService = require("../services/user.service");
+const avatarService = require("../services/avatar.service");
 const pick = require("../utils/pick");
 
 const PROFILE_FIELDS = [
@@ -49,6 +50,17 @@ const updateProfile = async (req, res) => {
   res.json({ success: true, message: "Profile updated", data: profile });
 };
 
+// Profile photo
+const uploadAvatar = async (req, res) => {
+  const profile = await avatarService.uploadAvatar(req.user.id, req.file);
+  res.json({ success: true, message: "Profile picture updated", data: profile });
+};
+
+const removeAvatar = async (req, res) => {
+  const profile = await avatarService.removeAvatar(req.user.id);
+  res.json({ success: true, message: "Profile picture removed", data: profile });
+};
+
 const getNotificationSettings = async (req, res) => {
   const settings = await userService.getNotificationSettings(req.user.id);
   res.json({ success: true, data: settings });
@@ -77,6 +89,8 @@ module.exports = {
   changePassword,
   getProfile,
   updateProfile,
+  uploadAvatar,
+  removeAvatar,
   getNotificationSettings,
   updateNotificationSettings,
   forgotPassword,

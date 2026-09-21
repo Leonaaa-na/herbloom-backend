@@ -3,6 +3,7 @@ const { body } = require("express-validator");
 const controller = require("../controllers/user.controller");
 const auth = require("../middleware/auth");
 const validate = require("../middleware/validate");
+const { uploadAvatar } = require("../middleware/upload");
 
 const router = express.Router();
 
@@ -46,6 +47,8 @@ router.put("/me", auth, controller.updateMe);
 router.put("/change-password", auth, changePasswordRules, validate, controller.changePassword);
 router.get("/profile", auth, controller.getProfile);
 router.put("/profile", auth, controller.updateProfile);
+router.post("/profile/avatar", auth, uploadAvatar.single("avatar"), controller.uploadAvatar); // form field: "avatar"
+router.delete("/profile/avatar", auth, controller.removeAvatar);
 router.get("/notification-settings", auth, controller.getNotificationSettings);
 router.put("/notification-settings", auth, controller.updateNotificationSettings);
 
