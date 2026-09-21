@@ -14,8 +14,12 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.ENUM("none", "spotting", "light", "medium", "heavy"),
         defaultValue: "none",
       },
-      symptoms: { type: DataTypes.ARRAY(DataTypes.STRING), defaultValue: [] }, // ["cramps", "headache"]
+      symptoms: { type: DataTypes.ARRAY(DataTypes.STRING), defaultValue: [] }, // ["Cramps", "Headache"]
       mood: { type: DataTypes.STRING, allowNull: true },
+      // SymptomsTracker fields
+      painLevel: { type: DataTypes.INTEGER, allowNull: true, validate: { min: 1, max: 10 } },
+      painLocation: { type: DataTypes.STRING, allowNull: true },
+      stressLevel: { type: DataTypes.STRING, allowNull: true }, // "Low" | "Moderate" | "High"
       temperature: { type: DataTypes.FLOAT, allowNull: true }, // basal body temperature
       notes: { type: DataTypes.TEXT, allowNull: true },
     },

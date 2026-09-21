@@ -11,13 +11,16 @@ router.use(auth); // everything here needs a logged-in user
 
 const cycleRules = [
   body("startDate").isISO8601().withMessage("startDate must be YYYY-MM-DD"),
-  body("endDate").optional({ values: "null" }).isISO8601().withMessage("endDate must be YYYY-MM-DD"),
+  // "falsy" skips null, undefined AND "" (CycleSetup sends an empty string)
+  body("endDate").optional({ values: "falsy" }).isISO8601().withMessage("endDate must be YYYY-MM-DD"),
 ];
 
 const logRules = [
   body("date").isISO8601().withMessage("date must be YYYY-MM-DD"),
   body("flow").optional().isIn(["none", "spotting", "light", "medium", "heavy"]).withMessage("Invalid flow"),
   body("symptoms").optional().isArray().withMessage("symptoms must be a list"),
+  body("painLevel").optional({ values: "falsy" }).isInt({ min: 1, max: 10 }).withMessage("painLevel must be 1–10"),
+  body("stressLevel").optional({ values: "falsy" }).isIn(["Low", "Moderate", "High"]).withMessage("Invalid stress level"),
 ];
 
 const dateParam = [param("date").isISO8601().withMessage("date must be YYYY-MM-DD")];

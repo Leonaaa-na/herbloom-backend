@@ -2,7 +2,7 @@ const cycleService = require("../services/cycle.service");
 const pick = require("../utils/pick");
 
 const CYCLE_FIELDS = ["startDate", "endDate", "notes"];
-const LOG_FIELDS = ["date", "flow", "symptoms", "mood", "temperature", "notes"];
+const LOG_FIELDS = ["date", "flow", "symptoms", "mood", "painLevel", "painLocation", "stressLevel", "temperature", "notes"];
 
 const createCycle = async (req, res) => {
   const cycle = await cycleService.createCycle(req.user.id, pick(req.body, CYCLE_FIELDS));

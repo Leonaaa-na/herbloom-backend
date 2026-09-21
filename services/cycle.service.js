@@ -99,7 +99,7 @@ const updateCycle = async (userId, id, data) => {
   if (!cycle) throw new ApiError(404, "Cycle not found");
 
   const startDate = data.startDate || cycle.startDate;
-  const endDate = data.endDate !== undefined ? data.endDate : cycle.endDate;
+  const endDate = data.endDate !== undefined ? data.endDate || null : cycle.endDate;
   const average = await getAverageCycleLength(userId);
 
   return cycle.update({
@@ -145,10 +145,11 @@ const getCurrentCycle = async (userId) => {
   };
 };
 
-// ---------- Daily logs (flow / symptoms / mood) ----------
+// ---------- Daily logs (flow / symptoms / mood / pain / stress) ----------
 
+// One row per day. Saving flow doesn't touch symptoms and vice versa,
+// because only the fields actually sent get updated.
 const saveLog = async (userId, data) => {
-  // Find the cycle this date belongs to (latest cycle that started on/before it)
   const cycle = await Cycle.findOne({
     where: { userId, startDate: { [Op.lte]: data.date } },
     order: [["startDate", "DESC"]],
@@ -163,12 +164,17 @@ const saveLog = async (userId, data) => {
   return log;
 };
 
-const getLogs = async (userId, { from, to } = {}) => {
+// ?from=YYYY-MM-DD&to=YYYY-MM-DD&limit=30
+const getLogs = async (userId, { from, to, limit } = {}) => {
   const where = { userId };
   if (from || to) {
     where.date = { ...(from && { [Op.gte]: from }), ...(to && { [Op.lte]: to }) };
   }
-  return CycleLog.findAll({ where, order: [["date", "DESC"]] });
+  return CycleLog.findAll({
+    where,
+    order: [["date", "DESC"]],
+    ...(limit && { limit: Math.min(Number(limit) || 30, 365) }),
+  });
 };
 
 const getLogByDate = async (userId, date) => {
@@ -217,7 +223,6 @@ const getInsights = async (userId, isPremium = false) => {
     topSymptoms: count(logs.flatMap((l) => l.symptoms || [])).slice(0, 5),
     moods: count(logs.map((l) => l.mood).filter(Boolean)),
     flow: count(logs.map((l) => l.flow).filter((f) => f && f !== "none")),
-    // Tells the frontend to show the "unlock advanced" card
     advancedAvailable: isPremium,
     upgradeHint: isPremium ? null : "Upgrade for trend analysis, symptom patterns by phase, and full history",
   };
