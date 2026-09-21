@@ -4,20 +4,28 @@ const { Category } = require("../models");
 const slugify = require("../utils/slugify");
 
 const categories = [
-  { name: "Menstrual Health", description: "Cycles, periods, PMS and everything in between" },
-  { name: "Pregnancy", description: "Trimester by trimester guidance" },
-  { name: "Fertility", description: "Conceiving, ovulation and fertility awareness" },
-  { name: "Nutrition", description: "Eating well through every stage" },
-  { name: "Mental Wellbeing", description: "Mood, stress, anxiety and support" },
-  { name: "Sleep", description: "Rest, insomnia and sleep hygiene" },
-  { name: "Wellness & Exercise", description: "Movement, fitness and self-care" },
-  { name: "Postpartum", description: "Recovery, feeding and the fourth trimester" },
-].map((c) => ({ ...c, slug: slugify(c.name) }));
+  { name: "Menstrual Health", icon: "🩸", description: "Learn about periods, menstrual health and cycle wellbeing." },
+  { name: "Pregnancy", icon: "🤰🏾", description: "Reliable information about pregnancy and maternal health." },
+  { name: "Fertility", icon: "🌱", description: "Explore fertility and reproductive health information." },
+  { name: "Nutrition", icon: "🥗", description: "Learn about healthy eating and nutritional wellbeing." },
+  { name: "Mental Wellbeing", icon: "🧠", description: "Explore mental and emotional wellbeing." },
+  { name: "Sleep", icon: "🌙", description: "Learn about healthy sleep and rest." },
+  { name: "Wellness & Exercise", icon: "🏃🏾‍♀️", description: "Explore physical activity and healthy lifestyle information." },
+  { name: "Postpartum", icon: "👶🏾", description: "Learn about recovery, care and wellbeing after childbirth." },
+];
 
 (async () => {
   try {
     await sequelize.authenticate();
-    await Category.bulkCreate(categories, { updateOnDuplicate: ["description"] });
+
+    for (const c of categories) {
+      const [row, created] = await Category.findOrCreate({
+        where: { name: c.name },
+        defaults: { ...c, slug: slugify(c.name) },
+      });
+      if (!created) await row.update({ icon: c.icon, description: c.description });
+    }
+
     console.log(`Seeded ${categories.length} categories`);
   } catch (err) {
     console.error("Seed failed:", err.message);

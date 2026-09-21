@@ -15,6 +15,15 @@ module.exports = (sequelize, DataTypes) => {
       slug: { type: DataTypes.STRING, allowNull: false, unique: true },
       summary: { type: DataTypes.TEXT, allowNull: true },
       content: { type: DataTypes.TEXT, allowNull: false },
+      // Where the information comes from (shown on every card)
+      type: {
+        type: DataTypes.ENUM("Medical Article", "Personal Experience"),
+        defaultValue: "Medical Article",
+      },
+      sourceName: { type: DataTypes.STRING, allowNull: true }, // "World Health Organization (WHO)"
+      sourceAuthor: { type: DataTypes.STRING, allowNull: true }, // "World Health Organization"
+      sourceUrl: { type: DataTypes.STRING, allowNull: true },
+      publishedYear: { type: DataTypes.STRING, allowNull: true }, // "2024"
       coverImageUrl: { type: DataTypes.STRING, allowNull: true }, // Cloudinary
       coverImagePublicId: { type: DataTypes.STRING, allowNull: true },
       tags: { type: DataTypes.ARRAY(DataTypes.STRING), defaultValue: [] },

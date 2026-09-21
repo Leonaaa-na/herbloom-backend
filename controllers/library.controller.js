@@ -2,7 +2,10 @@ const service = require("../services/library.service");
 const pick = require("../utils/pick");
 
 const CATEGORY_FIELDS = ["name", "description", "icon"];
-const ARTICLE_FIELDS = ["categoryId", "title", "summary", "content", "tags", "isPremium", "isPublished"];
+const ARTICLE_FIELDS = [
+  "categoryId", "title", "summary", "content", "tags", "isPremium", "isPublished",
+  "type", "sourceName", "sourceAuthor", "sourceUrl", "publishedYear",
+];
 
 // Multipart forms send everything as text, so turn "a,b" or '["a","b"]' into a real array
 const parseTags = (body) => {

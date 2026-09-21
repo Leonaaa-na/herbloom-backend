@@ -1,11 +1,24 @@
-const { Category, Article, SavedArticle, User, Op } = require("../models");
+const { sequelize, Category, Article, SavedArticle, User, Op } = require("../models");
 const ApiError = require("../utils/ApiError");
 const cloudinary = require("../config/cloudinary");
 const { FREE_LIMITS } = require("../config/plans");
 
 // ---------- Categories ----------
 
-const getCategories = () => Category.findAll({ order: [["name", "ASC"]] });
+// Each category comes back with how many published articles it has
+const getCategories = async () => {
+  const categories = await Category.findAll({ order: [["name", "ASC"]] });
+
+  const counts = await Article.findAll({
+    where: { isPublished: true },
+    attributes: ["categoryId", [sequelize.fn("COUNT", sequelize.col("id")), "count"]],
+    group: ["categoryId"],
+    raw: true,
+  });
+  const countFor = Object.fromEntries(counts.map((c) => [c.categoryId, Number(c.count)]));
+
+  return categories.map((c) => ({ ...c.toJSON(), articleCount: countFor[c.id] || 0 }));
+};
 
 const createCategory = (data) => Category.create(data);
 
@@ -25,37 +38,42 @@ const deleteCategory = async (id) => {
 // ---------- Articles ----------
 
 const ARTICLE_INCLUDE = [
-  { association: "category", attributes: ["id", "name", "slug"] },
+  { association: "category", attributes: ["id", "name", "slug", "icon"] },
   { association: "author", attributes: ["id", "name"] },
 ];
 
-// ?category=slug&search=text&tag=x&page=1&limit=12
-const getArticles = async ({ category, search, tag, page = 1, limit = 12 } = {}) => {
+// ?category=slug&search=text&tag=x&type=&page=1&limit=12
+const getArticles = async ({ category, search, tag, type, page = 1, limit = 12 } = {}) => {
   const where = { isPublished: true };
   const include = [...ARTICLE_INCLUDE];
 
   if (category) include[0] = { ...include[0], where: { slug: category } };
   if (tag) where.tags = { [Op.contains]: [tag] };
+  if (type) where.type = type;
   if (search) {
     where[Op.or] = [
       { title: { [Op.iLike]: `%${search}%` } },
       { summary: { [Op.iLike]: `%${search}%` } },
       { content: { [Op.iLike]: `%${search}%` } },
+      { sourceName: { [Op.iLike]: `%${search}%` } },
     ];
   }
 
-  const offset = (Number(page) - 1) * Number(limit);
+  const perPage = Math.min(Number(limit) || 12, 100);
+  const currentPage = Math.max(Number(page) || 1, 1);
+
   const { rows, count } = await Article.findAndCountAll({
     where,
     include,
     attributes: { exclude: ["content"] }, // list view doesn't need the full text
     order: [["createdAt", "DESC"]],
-    limit: Number(limit),
-    offset,
+    limit: perPage,
+    offset: (currentPage - 1) * perPage,
+    distinct: true,
   });
 
   // Premium articles still appear in lists (with a lock badge) — the content is what's gated
-  return { articles: rows, total: count, page: Number(page), pages: Math.ceil(count / Number(limit)) };
+  return { articles: rows, total: count, page: currentPage, pages: Math.ceil(count / perPage) };
 };
 
 const getArticleBySlug = async (slug, userId = null, isPremium = false) => {
