@@ -8,6 +8,9 @@ const { PLANS, PREMIUM_FEATURES } = require("../config/plans");
 const toPesewas = (ghs) => Math.round(Number(ghs) * 100);
 const findPlan = (id) => PLANS.find((p) => p.id === id);
 
+// Paystack statuses that mean "not finished yet" (e.g. waiting for MoMo approval on the phone)
+const STILL_WAITING = ["pending", "ongoing", "processing", "queued", "send_otp", "send_pin", "send_phone", "send_birthday", "send_address", "open_url"];
+
 // What PremiumPlans.tsx and PremiumFeatures.tsx fetch
 const getPlans = () => ({ plans: PLANS, features: PREMIUM_FEATURES });
 
@@ -26,7 +29,7 @@ const initialize = async (user, { purpose = "subscription", plan, appointmentId,
     if (!appointmentId) throw new ApiError(400, "appointmentId is required");
     const appt = await Appointment.findOne({ where: { id: appointmentId, userId: user.id }, include: ["professional"] });
     if (!appt) throw new ApiError(404, "Appointment not found");
-    payAmount = appt.professional.consultationFee || 0;
+    payAmount = appt.professional ? appt.professional.consultationFee || 0 : 0;
     if (payAmount <= 0) throw new ApiError(400, "This appointment has no fee to pay");
     metadata.appointmentId = appointmentId;
   }
@@ -84,7 +87,7 @@ const applySuccess = async (payment) => {
 const applyFailure = async (payment, status = "failed") => {
   if (payment.status === "success") return payment;
   await payment.update({ status });
-  await notify(payment.userId, { title: "Payment failed", body: `GHS ${payment.amount} — ${payment.purpose}`, type: "payment", data: { paymentId: payment.id } });
+  await notify(payment.userId, { title: "Payment not completed", body: `GHS ${payment.amount} — ${payment.purpose}`, type: "payment", data: { paymentId: payment.id } });
   return payment;
 };
 
@@ -100,6 +103,7 @@ const verify = async (user, reference) => {
   await payment.update({ channel: tx.channel, gatewayResponse: tx });
 
   if (tx.status === "success") return applySuccess(payment);
+  if (STILL_WAITING.includes(tx.status)) return payment; // stays "pending" — frontend checks again
   return applyFailure(payment, tx.status === "abandoned" ? "abandoned" : "failed");
 };
 
@@ -121,7 +125,11 @@ const verifySignature = (rawBody, signature) => {
   return hash === signature;
 };
 
-const getMyPayments = (userId) => Payment.findAll({ where: { userId }, order: [["createdAt", "DESC"]] });
+const getMyPayments = (userId) => Payment.findAll({
+  where: { userId },
+  attributes: { exclude: ["gatewayResponse"] }, // raw Paystack data stays on the server
+  order: [["createdAt", "DESC"]],
+});
 
 // PremiumStatus.tsx reads this
 const getMySubscription = async (userId) => {
