@@ -11,6 +11,9 @@ const router = express.Router();
 
 router.get("/topics", controller.getTopics);
 
+// My own stats (must be above /users/:id)
+router.get("/me/stats", auth, controller.getMyStats);
+
 // Posts — reading works logged out (optionalAuth adds isSupported/isMine when a token is present)
 router.get("/posts", optionalAuth, controller.getPosts);
 router.get("/posts/:id", optionalAuth, controller.getPost);

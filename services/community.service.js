@@ -1,4 +1,4 @@
-const { Post, Comment, Support, User, Profile, Professional, Op } = require("../models");
+const { Post, Comment, Support, User, Professional, Op } = require("../models");
 const ApiError = require("../utils/ApiError");
 const notify = require("../utils/notify");
 const cloudinary = require("../config/cloudinary");
@@ -11,7 +11,7 @@ const AUTHOR_INCLUDE = {
   attributes: ["id", "name", "role"],
   include: [
     { association: "profile", attributes: ["username", "avatarUrl"] },
-    { association: "professionalProfile", attributes: ["specialty", "verificationStatus"] },
+    { association: "professionalProfile", attributes: ["id", "specialty", "verificationStatus"] },
   ],
 };
 
@@ -21,7 +21,7 @@ const present = (post, viewerId, supportedIds = new Set()) => {
   if (p.isAnonymous && p.authorId !== viewerId) {
     p.author = { id: null, name: "Anonymous", profile: null, professionalProfile: null };
   }
-  p.isMine = p.authorId === viewerId;
+  p.isMine = !!viewerId && p.authorId === viewerId;
   p.isSupported = supportedIds.has(p.id);
   return p;
 };
@@ -45,30 +45,38 @@ const createPost = async (user, data, file) => {
   });
 };
 
-// ?topic=&professional=true&search=&authorId=&page=&limit=
-const getPosts = async ({ topic, professional, search, authorId, page = 1, limit = 15 } = {}, viewerId = null) => {
+// ?topic=&professional=true&search=&authorId=&mine=true&page=&limit=
+const getPosts = async ({ topic, professional, search, authorId, mine, page = 1, limit = 15 } = {}, viewerId = null) => {
   const where = {};
   if (topic) where.topic = topic;
   if (professional === "true") where.isProfessionalContent = true;
-  if (authorId) { where.authorId = authorId; where.isAnonymous = false; }
+  if (mine === "true" && viewerId) {
+    where.authorId = viewerId; // your own posts, anonymous ones included
+  } else if (authorId) {
+    where.authorId = authorId;
+    where.isAnonymous = false;
+  }
   if (search) where[Op.or] = [{ title: { [Op.iLike]: `%${search}%` } }, { content: { [Op.iLike]: `%${search}%` } }];
 
-  const offset = (Number(page) - 1) * Number(limit);
+  const perPage = Math.min(Number(limit) || 15, 100);
+  const currentPage = Math.max(Number(page) || 1, 1);
+
   const { rows, count } = await Post.findAndCountAll({
     where,
     include: [AUTHOR_INCLUDE],
     order: [["isPinned", "DESC"], ["createdAt", "DESC"]],
-    limit: Number(limit),
-    offset,
+    limit: perPage,
+    offset: (currentPage - 1) * perPage,
+    distinct: true,
   });
 
   let supported = new Set();
   if (viewerId && rows.length) {
-    const mine = await Support.findAll({ where: { userId: viewerId, postId: rows.map((r) => r.id) }, attributes: ["postId"] });
-    supported = new Set(mine.map((s) => s.postId));
+    const mineSupports = await Support.findAll({ where: { userId: viewerId, postId: rows.map((r) => r.id) }, attributes: ["postId"] });
+    supported = new Set(mineSupports.map((s) => s.postId));
   }
 
-  return { posts: rows.map((p) => present(p, viewerId, supported)), total: count, page: Number(page), pages: Math.ceil(count / Number(limit)) };
+  return { posts: rows.map((p) => present(p, viewerId, supported)), total: count, page: currentPage, pages: Math.ceil(count / perPage) };
 };
 
 const getPost = async (id, viewerId = null) => {
@@ -104,8 +112,9 @@ const toggleSupport = async (user, postId) => {
   const existing = await Support.findOne({ where: { userId: user.id, postId } });
   if (existing) {
     await existing.destroy();
-    await post.decrement("supportCount");
-    return { supported: false, supportCount: post.supportCount - 1 };
+    const supportCount = Math.max(0, post.supportCount - 1);
+    await post.update({ supportCount });
+    return { supported: false, supportCount };
   }
 
   await Support.create({ userId: user.id, postId });
@@ -167,7 +176,7 @@ const deleteComment = async (user, id) => {
   return true;
 };
 
-// ---------- Public user profile ----------
+// ---------- Profiles & stats ----------
 
 const getUserProfile = async (id) => {
   const user = await User.findOne({
@@ -183,4 +192,17 @@ const getUserProfile = async (id) => {
   return { ...user.toJSON(), postCount };
 };
 
-module.exports = { TOPICS, createPost, getPosts, getPost, updatePost, deletePost, toggleSupport, getComments, addComment, deleteComment, getUserProfile };
+// For the logged-in user's own profile page
+const getMyStats = async (userId) => {
+  const [posts, supported, comments] = await Promise.all([
+    Post.count({ where: { authorId: userId } }),
+    Support.count({ where: { userId } }),
+    Comment.count({ where: { authorId: userId } }),
+  ]);
+  return { posts, supported, comments };
+};
+
+module.exports = {
+  TOPICS, createPost, getPosts, getPost, updatePost, deletePost, toggleSupport,
+  getComments, addComment, deleteComment, getUserProfile, getMyStats,
+};

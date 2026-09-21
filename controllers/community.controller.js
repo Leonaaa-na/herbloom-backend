@@ -36,5 +36,9 @@ const deleteComment = async (req, res) => {
 };
 
 const getUserProfile = async (req, res) => res.json({ success: true, data: await service.getUserProfile(req.params.id) });
+const getMyStats = async (req, res) => res.json({ success: true, data: await service.getMyStats(req.user.id) });
 
-module.exports = { getTopics, createPost, getPosts, getPost, updatePost, deletePost, toggleSupport, getComments, addComment, deleteComment, getUserProfile };
+module.exports = {
+  getTopics, createPost, getPosts, getPost, updatePost, deletePost, toggleSupport,
+  getComments, addComment, deleteComment, getUserProfile, getMyStats,
+};
