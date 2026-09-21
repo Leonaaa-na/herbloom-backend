@@ -17,10 +17,10 @@ const rules = [
 ];
 
 router.post("/sync", controller.sync);
-router.post("/", withPremium, rules, validate, controller.createReminder); // free cap: 3, no repeats
+router.post("/", withPremium, rules, validate, controller.createReminder); // free: 3 active, no repeats
 router.get("/", controller.getReminders);
 router.get("/:id", controller.getReminder);
-router.put("/:id", controller.updateReminder);
+router.put("/:id", withPremium, controller.updateReminder); // free: can't switch on repeat
 router.put("/:id/complete", controller.toggleComplete);
 router.delete("/:id", controller.deleteReminder);
 

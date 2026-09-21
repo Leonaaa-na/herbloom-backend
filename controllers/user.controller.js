@@ -11,6 +11,7 @@ const PROFILE_FIELDS = [
 const SETTINGS_FIELDS = [
   "notificationsEnabled", "periodNotifications", "pregnancyNotifications", "medicationNotifications",
   "appointmentNotifications", "wellnessNotifications", "notificationSound", "vibration", "emailNotifications",
+  "reminderLeadMinutes", "quietHoursEnabled", "quietHoursStart", "quietHoursEnd",
 ];
 
 const register = async (req, res) => {

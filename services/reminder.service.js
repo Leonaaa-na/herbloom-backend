@@ -13,6 +13,12 @@ const SETTING_FOR_TYPE = {
   custom: null,
 };
 
+const upgradeError = (message) => {
+  const err = new ApiError(403, message);
+  err.upgradeRequired = true;
+  return err;
+};
+
 // ---------- User CRUD ----------
 
 const createReminder = async (userId, data, isPremium = false) => {
@@ -20,17 +26,11 @@ const createReminder = async (userId, data, isPremium = false) => {
   if (!isPremium) {
     const active = await Reminder.count({ where: { userId, completed: false, automatic: false } });
     if (active >= FREE_LIMITS.activeReminders) {
-      const err = new ApiError(403, `Free accounts can have ${FREE_LIMITS.activeReminders} active reminders. Upgrade for unlimited.`);
-      err.upgradeRequired = true;
-      throw err;
+      throw upgradeError(`Free accounts can have ${FREE_LIMITS.activeReminders} active reminders. Upgrade for unlimited.`);
     }
-    if (data.repeat && data.repeat !== "none") {
-      const err = new ApiError(403, "Repeating reminders are a Premium feature");
-      err.upgradeRequired = true;
-      throw err;
-    }
+    if (data.repeat && data.repeat !== "none") throw upgradeError("Repeating reminders are a Premium feature");
   }
-  return Reminder.create({ ...data, userId });
+  return Reminder.create({ ...data, userId, automatic: false });
 };
 
 // ?type=&completed=true|false&upcoming=true
@@ -48,7 +48,15 @@ const getReminder = async (userId, id) => {
   return r;
 };
 
-const updateReminder = async (userId, id, data) => (await getReminder(userId, id)).update(data);
+const updateReminder = async (userId, id, data, isPremium = false) => {
+  const r = await getReminder(userId, id);
+  if (!isPremium && !r.automatic && data.repeat && data.repeat !== "none" && data.repeat !== r.repeat) {
+    throw upgradeError("Repeating reminders are a Premium feature");
+  }
+  // A new date or time means it should fire again
+  const moved = (data.date && data.date !== r.date) || (data.time && data.time !== r.time);
+  return r.update({ ...data, ...(moved && { lastSentAt: null }) });
+};
 
 const deleteReminder = async (userId, id) => {
   await (await getReminder(userId, id)).destroy();
@@ -62,7 +70,7 @@ const toggleComplete = async (userId, id) => {
 
 // ---------- Firing (runs every minute) ----------
 
-// Reminder date+time as a real Date. Server runs in Ghana time (UTC), same as the users.
+// Reminder date+time as a real Date. Server runs in UTC, which is Ghana time.
 const scheduledAt = (r) => new Date(`${r.date}T${r.time.slice(0, 5)}:00`);
 
 const nextDate = (date, repeat) => {
@@ -73,25 +81,57 @@ const nextDate = (date, repeat) => {
   return d.toISOString().slice(0, 10);
 };
 
-const isAllowed = async (userId, type) => {
-  const settings = await NotificationSetting.findOne({ where: { userId } });
-  if (!settings) return true;
-  if (!settings.notificationsEnabled) return false;
+const DEFAULT_SETTINGS = { notificationsEnabled: true, reminderLeadMinutes: 0, quietHoursEnabled: false };
+
+const toMinutes = (hhmm) => {
+  const [h, m] = String(hhmm).split(":").map(Number);
+  return h * 60 + (m || 0);
+};
+
+// Handles windows that cross midnight, e.g. 22:00 → 07:00
+const inQuietHours = (s, now) => {
+  if (!s.quietHoursEnabled || !s.quietHoursStart || !s.quietHoursEnd) return false;
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const start = toMinutes(s.quietHoursStart);
+  const end = toMinutes(s.quietHoursEnd);
+  if (start === end) return false;
+  return start < end ? nowMin >= start && nowMin < end : nowMin >= start || nowMin < end;
+};
+
+const typeAllowed = (s, type) => {
+  if (!s.notificationsEnabled) return false;
   const key = SETTING_FOR_TYPE[type];
-  return key ? settings[key] : true;
+  return key ? s[key] !== false : true;
 };
 
 const fireDueReminders = async () => {
   const now = new Date();
-  const candidates = await Reminder.findAll({ where: { completed: false, date: { [Op.lte]: today() } } });
-  let fired = 0;
+  // Include tomorrow's reminders so "1 day before" can fire today
+  const tomorrow = new Date(now.getTime() + 86400000).toISOString().slice(0, 10);
+  const candidates = await Reminder.findAll({ where: { completed: false, date: { [Op.lte]: tomorrow } } });
 
+  const cache = new Map();
+  const settingsFor = async (userId) => {
+    if (!cache.has(userId)) {
+      const s = await NotificationSetting.findOne({ where: { userId } });
+      cache.set(userId, s ? s.toJSON() : DEFAULT_SETTINGS);
+    }
+    return cache.get(userId);
+  };
+
+  let fired = 0;
   for (const r of candidates) {
-    const at = scheduledAt(r);
+    const s = await settingsFor(r.userId);
+    const lead = Number(s.reminderLeadMinutes) || 0;
+    const at = new Date(scheduledAt(r).getTime() - lead * 60000);
+
     if (at > now) continue; // not yet
     if (r.lastSentAt && new Date(r.lastSentAt) >= at) continue; // already sent for this slot
 
-    if (await isAllowed(r.userId, r.type)) {
+    const allowed = typeAllowed(s, r.type);
+    if (allowed && inQuietHours(s, now)) continue; // hold it until quiet hours end
+
+    if (allowed) {
       await notify(r.userId, {
         title: r.title,
         body: r.notes || "",
@@ -103,8 +143,8 @@ const fireDueReminders = async () => {
 
     const updates = { lastSentAt: now };
     if (r.repeat !== "none") {
-      let d = r.date;
-      while (d <= today()) d = nextDate(d, r.repeat); // move to the next future slot
+      let d = nextDate(r.date, r.repeat); // always move at least one slot
+      while (d < today()) d = nextDate(d, r.repeat); // skip any missed ones
       updates.date = d;
     }
     await r.update(updates);

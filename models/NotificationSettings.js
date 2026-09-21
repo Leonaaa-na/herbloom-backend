@@ -16,7 +16,13 @@ module.exports = (sequelize, DataTypes) => {
       wellnessNotifications: { type: DataTypes.BOOLEAN, defaultValue: true },
       notificationSound: { type: DataTypes.BOOLEAN, defaultValue: true },
       vibration: { type: DataTypes.BOOLEAN, defaultValue: true },
-      emailNotifications: { type: DataTypes.BOOLEAN, defaultValue: true }, // backend only: appointment/reset emails
+      emailNotifications: { type: DataTypes.BOOLEAN, defaultValue: true }, // appointment / reset emails
+      // How early reminders fire: 0 = on time, 15 = 15 minutes before, 1440 = 1 day before
+      reminderLeadMinutes: { type: DataTypes.INTEGER, defaultValue: 0 },
+      // Reminders due in this window wait until it ends
+      quietHoursEnabled: { type: DataTypes.BOOLEAN, defaultValue: false },
+      quietHoursStart: { type: DataTypes.STRING, defaultValue: "22:00" },
+      quietHoursEnd: { type: DataTypes.STRING, defaultValue: "07:00" },
     },
     { tableName: "notification_settings" }
   );
