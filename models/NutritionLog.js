@@ -13,8 +13,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.ENUM("breakfast", "lunch", "dinner", "snack"),
         allowNull: false,
       },
-      description: { type: DataTypes.TEXT, allowNull: false },
+      description: { type: DataTypes.TEXT, allowNull: false }, // the food name
       calories: { type: DataTypes.INTEGER, allowNull: true },
+      protein: { type: DataTypes.FLOAT, allowNull: true }, // grams
+      carbs: { type: DataTypes.FLOAT, allowNull: true }, // grams
+      fat: { type: DataTypes.FLOAT, allowNull: true }, // grams
       context: {
         type: DataTypes.ENUM("cycle", "pregnancy", "postpartum", "general"),
         defaultValue: "general",

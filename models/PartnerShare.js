@@ -10,7 +10,8 @@ module.exports = (sequelize, DataTypes) => {
         primaryKey: true,
       },
       userId: { type: DataTypes.UUID, allowNull: false }, // owner of the data
-      partnerEmail: { type: DataTypes.STRING, allowNull: false, validate: { isEmail: true } },
+      // Optional: the user can just generate a code and hand it over themselves
+      partnerEmail: { type: DataTypes.STRING, allowNull: true, validate: { isEmail: true } },
       partnerUserId: { type: DataTypes.UUID, allowNull: true }, // filled once the partner accepts
       shareCode: { type: DataTypes.STRING, allowNull: false, unique: true },
       status: {

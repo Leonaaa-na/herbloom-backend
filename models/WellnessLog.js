@@ -13,7 +13,12 @@ module.exports = (sequelize, DataTypes) => {
       energyLevel: { type: DataTypes.INTEGER, allowNull: true, validate: { min: 1, max: 5 } },
       stressLevel: { type: DataTypes.INTEGER, allowNull: true, validate: { min: 1, max: 5 } },
       sleepHours: { type: DataTypes.FLOAT, allowNull: true },
+      // Water: the frontend counts glasses; ml is kept for insights (1 glass = 250 ml)
+      waterGlasses: { type: DataTypes.INTEGER, defaultValue: 0 },
       waterMl: { type: DataTypes.INTEGER, allowNull: true },
+      // Several activities per day: [{ id, type, duration, intensity, notes }]
+      activities: { type: DataTypes.JSONB, defaultValue: [] },
+      // Worked out from activities, used by insights
       exerciseMinutes: { type: DataTypes.INTEGER, allowNull: true },
       exerciseType: { type: DataTypes.STRING, allowNull: true },
       context: {
@@ -24,7 +29,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     {
       tableName: "wellness_logs",
-      indexes: [{ unique: true, fields: ["userId", "date"] }],
+      indexes: [{ unique: true, fields: ["userId", "date"] }], // one wellness row per day
     }
   );
 

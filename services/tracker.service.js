@@ -1,6 +1,8 @@
 const { Medication, MedicationLog, NutritionLog, WellnessLog, Note, Op } = require("../models");
 const ApiError = require("../utils/ApiError");
 
+const ML_PER_GLASS = 250;
+
 // Reusable "find one of mine or 404"
 const findOwned = async (Model, userId, id, label) => {
   const row = await Model.findOne({ where: { id, userId } });
@@ -77,14 +79,33 @@ const deleteNutritionLog = async (userId, id) => {
   return true;
 };
 
-// ---------- Wellness (one check-in per day → create or update) ----------
+// ---------- Wellness (one row per day → create or update) ----------
+
+// Fill in the totals insights rely on
+const withDerivedFields = (data) => {
+  const result = { ...data };
+
+  if (Array.isArray(result.activities)) {
+    result.exerciseMinutes = result.activities.reduce((sum, a) => sum + (Number(a.duration) || 0), 0);
+    result.exerciseType = result.activities.length
+      ? result.activities[result.activities.length - 1].type
+      : null;
+  }
+
+  if (result.waterGlasses !== undefined && result.waterMl === undefined) {
+    result.waterMl = Math.max(0, Number(result.waterGlasses) || 0) * ML_PER_GLASS;
+  }
+
+  return result;
+};
 
 const saveWellnessLog = async (userId, data) => {
+  const values = withDerivedFields(data);
   const [row, created] = await WellnessLog.findOrCreate({
     where: { userId, date: data.date },
-    defaults: { ...data, userId },
+    defaults: { ...values, userId },
   });
-  if (!created) await row.update(data);
+  if (!created) await row.update(values);
   return row;
 };
 

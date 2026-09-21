@@ -2,8 +2,11 @@ const service = require("../services/tracker.service");
 const pick = require("../utils/pick");
 
 const MED_FIELDS = ["name", "dosage", "frequency", "times", "context", "startDate", "endDate", "notes", "isActive"];
-const NUTRITION_FIELDS = ["date", "mealType", "description", "calories", "context", "notes"];
-const WELLNESS_FIELDS = ["date", "mood", "energyLevel", "stressLevel", "sleepHours", "waterMl", "exerciseMinutes", "exerciseType", "context", "notes"];
+const NUTRITION_FIELDS = ["date", "mealType", "description", "calories", "protein", "carbs", "fat", "context", "notes"];
+const WELLNESS_FIELDS = [
+  "date", "mood", "energyLevel", "stressLevel", "sleepHours",
+  "waterGlasses", "waterMl", "activities", "exerciseMinutes", "exerciseType", "context", "notes",
+];
 const NOTE_FIELDS = ["title", "content", "context", "date", "isPinned"];
 
 // Medications

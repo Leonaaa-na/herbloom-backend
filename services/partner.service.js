@@ -1,23 +1,37 @@
-const { PartnerShare, User, Cycle, CycleLog, Pregnancy, Appointment } = require("../models");
+const { PartnerShare, Cycle, CycleLog, Pregnancy, Appointment } = require("../models");
 const ApiError = require("../utils/ApiError");
-const { sendEmail, escapeHtml } = require("../config/mailer");
+const { sendEmail } = require("../config/mailer");
 
-// Owner invites a partner by email → gets a share code
-const invitePartner = async (owner, { partnerEmail, permissions }) => {
-  const existing = await PartnerShare.findOne({ where: { userId: owner.id, partnerEmail } });
+// Two ways to share:
+//  1. No email → just generate a code the user hands over themselves
+//  2. With email → same, but we also email the code to the partner
+const invitePartner = async (owner, { partnerEmail, permissions } = {}) => {
+  const email = partnerEmail ? partnerEmail.toLowerCase().trim() : null;
+
+  // Code-only: keep one open code per user and reuse it
+  if (!email) {
+    const open = await PartnerShare.findOne({
+      where: { userId: owner.id, partnerEmail: null, status: ["pending", "active"] },
+    });
+    if (open) return open;
+    return PartnerShare.create({ userId: owner.id, partnerEmail: null, ...(permissions && { permissions }) });
+  }
+
+  // Email invite
+  const existing = await PartnerShare.findOne({ where: { userId: owner.id, partnerEmail: email } });
   if (existing && existing.status !== "revoked") throw new ApiError(409, "You already invited this partner");
 
   const share = existing
-    ? await existing.update({ status: "pending", permissions, partnerUserId: null, acceptedAt: null })
-    : await PartnerShare.create({ userId: owner.id, partnerEmail, ...(permissions && { permissions }) });
+    ? await existing.update({ status: "pending", partnerUserId: null, acceptedAt: null, ...(permissions && { permissions }) })
+    : await PartnerShare.create({ userId: owner.id, partnerEmail: email, ...(permissions && { permissions }) });
 
   try {
     await sendEmail({
-      to: partnerEmail,
-      subject: `${escapeHtml(owner.name)} wants to share their HerBloom journey with you`,
+      to: email,
+      subject: `${owner.name} wants to share their HerBloom journey with you`,
       html: `
         <p>Hi,</p>
-        <p>${escapeHtml(owner.name)} invited you to follow their cycle on HerBloom.</p>
+        <p>${owner.name} invited you to follow their cycle on HerBloom.</p>
         <p>Create an account (or log in) and enter this code under <b>Partner Sharing</b>:</p>
         <h2 style="letter-spacing:4px">${share.shareCode}</h2>
       `,

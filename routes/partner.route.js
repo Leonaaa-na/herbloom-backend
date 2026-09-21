@@ -7,9 +7,9 @@ const validate = require("../middleware/validate");
 const router = express.Router();
 router.use(auth);
 
-// As the owner
+// As the owner — email is optional (no email = just generate a code)
 router.post("/invite",
-  [body("partnerEmail").isEmail().withMessage("A valid partner email is required")],
+  [body("partnerEmail").optional({ values: "falsy" }).isEmail().withMessage("Enter a valid partner email")],
   validate, controller.invitePartner);
 router.get("/", controller.getMyShares);
 router.put("/:id/permissions", controller.updatePermissions);
