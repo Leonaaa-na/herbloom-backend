@@ -127,17 +127,39 @@ const toggleSupport = async (user, postId) => {
 
 // ---------- Comments & replies ----------
 
+// Fetch every comment for the post in one simple query, then group the replies
+// under their parent here. Asking the database to nest replies-with-authors
+// inside comments-with-authors is fragile, so we do that part ourselves.
 const getComments = async (postId) => {
   const post = await Post.findByPk(postId);
   if (!post) throw new ApiError(404, "Post not found");
-  return Comment.findAll({
-    where: { postId, parentId: null },
-    include: [
-      AUTHOR_INCLUDE,
-      { association: "replies", include: [AUTHOR_INCLUDE], separate: true, order: [["createdAt", "ASC"]] },
-    ],
+
+  const all = await Comment.findAll({
+    where: { postId },
+    include: [AUTHOR_INCLUDE],
     order: [["createdAt", "ASC"]],
   });
+
+  const topLevel = [];
+  const byId = {};
+
+  for (const row of all) {
+    const comment = row.toJSON();
+    if (!comment.parentId) {
+      comment.replies = [];
+      byId[comment.id] = comment;
+      topLevel.push(comment);
+    }
+  }
+
+  for (const row of all) {
+    const comment = row.toJSON();
+    if (comment.parentId && byId[comment.parentId]) {
+      byId[comment.parentId].replies.push(comment);
+    }
+  }
+
+  return topLevel;
 };
 
 const addComment = async (user, postId, { content, parentId = null }) => {
