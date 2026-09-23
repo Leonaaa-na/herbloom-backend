@@ -9,7 +9,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       postId: { type: DataTypes.UUID, allowNull: false },
       authorId: { type: DataTypes.UUID, allowNull: false },
-      parentId: { type: DataTypes.UUID, allowNull: true }, // null = top-level comment, set = reply
+      parentId: { type: DataTypes.UUID, allowNull: true }, // set when this is a reply
       content: { type: DataTypes.TEXT, allowNull: false },
     },
     { tableName: "comments" }
@@ -22,8 +22,9 @@ module.exports = (sequelize, DataTypes) => {
     Comment.belongsTo(models.User, { foreignKey: "authorId", as: "author" });
     models.User.hasMany(Comment, { foreignKey: "authorId", as: "comments", onDelete: "CASCADE" });
 
-    Comment.belongsTo(Comment, { foreignKey: "parentId", as: "parent" });
+    // A comment can have replies, and each reply points back to its parent
     Comment.hasMany(Comment, { foreignKey: "parentId", as: "replies", onDelete: "CASCADE" });
+    Comment.belongsTo(Comment, { foreignKey: "parentId", as: "parent" });
   };
 
   return Comment;
