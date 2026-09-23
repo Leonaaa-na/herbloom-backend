@@ -13,6 +13,7 @@ const reminderRoutes = require("./reminder.route");
 const notificationRoutes = require("./notification.route");
 const paymentRoutes = require("./payment.route");
 const insightsRoutes = require("./insights.routes");
+const adminRoutes = require("./admin.route");
 
 module.exports = {
   userRoutes,
@@ -30,4 +31,5 @@ module.exports = {
   notificationRoutes,
   paymentRoutes,
   insightsRoutes,
+  adminRoutes,
 };
