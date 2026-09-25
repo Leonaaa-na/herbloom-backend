@@ -51,6 +51,7 @@ app.use("/api/notifications", allRoutes.notificationRoutes);
 app.use("/api/payments", allRoutes.paymentRoutes);
 app.use("/api/insights", allRoutes.insightsRoutes);
 app.use("/api/admin", allRoutes.adminRoutes);
+app.use("/api/push", allRoutes.pushRoutes);
 
 // Must stay last
 app.use(notFound);
