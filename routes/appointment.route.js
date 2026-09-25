@@ -28,6 +28,8 @@ router.get("/availability",
   [query("professionalId").isUUID(), query("date").isISO8601().withMessage("date must be YYYY-MM-DD")],
   validate, controller.getAvailability);
 router.get("/professional", role("professional", "admin"), controller.getForProfessional);
+router.get("/professional/pending-count", role("professional", "admin"), controller.getPendingCount);
+router.get("/admin/all", role("admin"), controller.getAllForAdmin); // read-only overview
 router.post("/personal", personalRules, validate, controller.addPersonal);
 
 // Patient
@@ -43,5 +45,6 @@ router.put("/:id/complete", controller.complete);
 
 // Professional / admin
 router.put("/:id/confirm", role("professional", "admin"), controller.confirm);
+router.put("/:id/decline", role("professional", "admin"), controller.decline);
 
 module.exports = router;

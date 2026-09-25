@@ -25,7 +25,8 @@ module.exports = (sequelize, DataTypes) => {
       },
       reason: { type: DataTypes.TEXT, allowNull: true },
       status: {
-        type: DataTypes.ENUM("pending", "confirmed", "completed", "cancelled", "rescheduled"),
+        // "declined" = the professional said no; the patient keeps it and picks another time
+        type: DataTypes.ENUM("pending", "confirmed", "completed", "cancelled", "rescheduled", "declined"),
         defaultValue: "pending",
       },
       location: { type: DataTypes.STRING, allowNull: true },
@@ -33,6 +34,7 @@ module.exports = (sequelize, DataTypes) => {
       notes: { type: DataTypes.TEXT, allowNull: true },
       previousScheduledAt: { type: DataTypes.DATE, allowNull: true }, // set when rescheduled
       cancellationReason: { type: DataTypes.TEXT, allowNull: true },
+      declineReason: { type: DataTypes.TEXT, allowNull: true }, // shown to the patient
     },
     { tableName: "appointments" }
   );

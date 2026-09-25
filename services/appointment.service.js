@@ -4,6 +4,9 @@ const notify = require("../utils/notify");
 const { sendEmail } = require("../config/mailer");
 
 const UPCOMING = ["pending", "confirmed", "rescheduled"];
+// A declined appointment is still the patient's to fix, so it isn't "past"
+const ACTIVE = [...UPCOMING, "declined"];
+
 const INCLUDE = [
   { association: "professional", attributes: ["id", "name", "title", "specialty", "hospital", "address", "city", "phone", "avatarUrl", "consultationFee", "userId"] },
   { association: "patient", attributes: ["id", "name", "email", "phone"] },
@@ -31,23 +34,35 @@ const getAppointmentFor = async (user, id) => {
 const addHistory = (appt, action, changedById, extra = {}) =>
   AppointmentHistory.create({ appointmentId: appt.id, action, changedById, ...extra });
 
+// Refuses the slot if ANY upcoming appointment for this professional overlaps it.
+// This runs on the server, so it holds even if two people book at the same moment.
 const assertSlotFree = async (professionalId, scheduledAt, durationMinutes, ignoreId = null) => {
   const start = new Date(scheduledAt);
   if (start < new Date()) throw new ApiError(400, "Pick a time in the future");
   const end = new Date(start.getTime() + durationMinutes * 60000);
 
-  const clash = await Appointment.findOne({
+  // Look at everything that day, then compare each one properly
+  const dayStart = new Date(start);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(start);
+  dayEnd.setHours(23, 59, 59, 999);
+
+  const sameDay = await Appointment.findAll({
     where: {
       professionalId,
       status: UPCOMING,
       ...(ignoreId && { id: { [Op.ne]: ignoreId } }),
-      scheduledAt: { [Op.lt]: end, [Op.gt]: new Date(start.getTime() - 3 * 60 * 60000) },
+      scheduledAt: { [Op.between]: [dayStart, dayEnd] },
     },
   });
-  if (clash) {
-    const clashEnd = new Date(new Date(clash.scheduledAt).getTime() + clash.durationMinutes * 60000);
-    if (new Date(clash.scheduledAt) < end && clashEnd > start) throw new ApiError(409, "That time slot is already booked");
-  }
+
+  const clash = sameDay.find((a) => {
+    const aStart = new Date(a.scheduledAt);
+    const aEnd = new Date(aStart.getTime() + a.durationMinutes * 60000);
+    return aStart < end && aEnd > start; // any overlap at all
+  });
+
+  if (clash) throw new ApiError(409, "That time slot is already booked. Please choose another time.");
 };
 
 // ---------- Patient: booking a registered professional ----------
@@ -110,7 +125,7 @@ const deletePersonal = async (user, id) => {
 const getMine = async (user, { status = "upcoming", context } = {}) => {
   const where = { userId: user.id };
   if (context) where.context = context;
-  if (status === "upcoming") where.status = UPCOMING;
+  if (status === "upcoming") where.status = ACTIVE; // declined ones still need the patient's attention
   if (status === "past") where.status = ["completed", "cancelled"];
   return Appointment.findAll({ where, include: INCLUDE, order: [["scheduledAt", status === "past" ? "DESC" : "ASC"]] });
 };
@@ -119,7 +134,7 @@ const getOne = async (user, id) => (await getAppointmentFor(user, id)).appt;
 
 const reschedule = async (user, id, { scheduledAt, reason }) => {
   const { appt } = await getAppointmentFor(user, id);
-  if (!UPCOMING.includes(appt.status)) throw new ApiError(400, "Only upcoming appointments can be rescheduled");
+  if (!ACTIVE.includes(appt.status)) throw new ApiError(400, "Only upcoming appointments can be rescheduled");
 
   // Only booked appointments compete for a professional's time
   if (!appt.isPersonal) await assertSlotFree(appt.professionalId, scheduledAt, appt.durationMinutes, appt.id);
@@ -129,6 +144,7 @@ const reschedule = async (user, id, { scheduledAt, reason }) => {
     previousScheduledAt: previous,
     scheduledAt,
     status: appt.isPersonal ? "confirmed" : "rescheduled",
+    declineReason: null, // picking a new time clears the old decline
   });
   await addHistory(appt, "rescheduled", user.id, { previousScheduledAt: previous, newScheduledAt: scheduledAt, reason });
 
@@ -140,7 +156,7 @@ const reschedule = async (user, id, { scheduledAt, reason }) => {
 
 const cancel = async (user, id, { reason } = {}) => {
   const { appt } = await getAppointmentFor(user, id);
-  if (!UPCOMING.includes(appt.status)) throw new ApiError(400, "This appointment can't be cancelled");
+  if (!ACTIVE.includes(appt.status)) throw new ApiError(400, "This appointment can't be cancelled");
 
   await appt.update({ status: "cancelled", cancellationReason: reason || null });
   await addHistory(appt, "cancelled", user.id, { reason });
@@ -158,9 +174,35 @@ const confirm = async (user, id) => {
   if (isPatient && user.role !== "admin") throw new ApiError(403, "Only the professional can confirm");
   if (!["pending", "rescheduled"].includes(appt.status)) throw new ApiError(400, "Nothing to confirm");
 
-  await appt.update({ status: "confirmed" });
+  await appt.update({ status: "confirmed", declineReason: null });
   await addHistory(appt, "confirmed", user.id);
   await notify(appt.userId, { title: "Appointment confirmed", body: `${providerOf(appt)} on ${fmt(appt.scheduledAt)}`, type: "appointment", data: { appointmentId: appt.id } });
+  return getOne(user, id);
+};
+
+// The professional says no. The appointment stays with the patient, who picks another time.
+const decline = async (user, id, { reason } = {}) => {
+  const { appt, isPatient } = await getAppointmentFor(user, id);
+  if (isPatient && user.role !== "admin") throw new ApiError(403, "Only the professional can decline");
+  if (appt.isPersonal) throw new ApiError(400, "Personal appointments can't be declined");
+  if (!["pending", "rescheduled"].includes(appt.status)) throw new ApiError(400, "Nothing to decline");
+
+  await appt.update({ status: "declined", declineReason: reason || null });
+  await addHistory(appt, "declined", user.id, { reason });
+
+  await notify(appt.userId, {
+    title: "Appointment declined — please pick another time",
+    body: `${providerOf(appt)} can't make ${fmt(appt.scheduledAt)}${reason ? ` — ${reason}` : ""}`,
+    type: "appointment",
+    data: { appointmentId: appt.id },
+  });
+
+  sendEmail({
+    to: appt.patient.email,
+    subject: "HerBloom appointment — please pick another time",
+    html: `<p>Hi ${appt.patient.name},</p><p><b>${providerOf(appt)}</b> isn't available on <b>${fmt(appt.scheduledAt)}</b>.${reason ? ` Reason given: ${reason}.` : ""}</p><p>Open HerBloom and choose another time that suits you.</p>`,
+  }).catch((e) => console.error("Decline email failed:", e.message));
+
   return getOne(user, id);
 };
 
@@ -178,14 +220,30 @@ const complete = async (user, id, { notes } = {}) => {
   return getOne(user, id);
 };
 
-// The professional's own schedule
+// The professional's own schedule. ?status=pending|upcoming|past|all
 const getForProfessional = async (user, { status = "upcoming" } = {}) => {
   const pro = await Professional.findOne({ where: { userId: user.id } });
   if (!pro) throw new ApiError(404, "No professional profile");
+
   const where = { professionalId: pro.id };
+  if (status === "pending") where.status = ["pending", "rescheduled"]; // waiting on this doctor
   if (status === "upcoming") where.status = UPCOMING;
-  if (status === "past") where.status = ["completed", "cancelled"];
-  return Appointment.findAll({ where, include: INCLUDE, order: [["scheduledAt", "ASC"]] });
+  if (status === "confirmed") where.status = "confirmed";
+  if (status === "past") where.status = ["completed", "cancelled", "declined"];
+
+  return Appointment.findAll({
+    where,
+    include: INCLUDE,
+    order: [["scheduledAt", status === "past" ? "DESC" : "ASC"]],
+  });
+};
+
+// How many are waiting on this doctor — for the sidebar badge
+const getPendingCount = async (user) => {
+  const pro = await Professional.findOne({ where: { userId: user.id } });
+  if (!pro) return { pending: 0 };
+  const pending = await Appointment.count({ where: { professionalId: pro.id, status: ["pending", "rescheduled"] } });
+  return { pending };
 };
 
 // Booked slots for a professional on a day → frontend greys them out
@@ -200,7 +258,30 @@ const getAvailability = async ({ professionalId, date }) => {
   return { date, booked };
 };
 
+// ---------- Admin (read-only) ----------
+
+const getAllForAdmin = async ({ status, page = 1, limit = 25 } = {}) => {
+  const where = {};
+  if (status === "pending") where.status = ["pending", "rescheduled"];
+  else if (status === "upcoming") where.status = UPCOMING;
+  else if (status) where.status = status;
+
+  const perPage = Math.min(Number(limit) || 25, 100);
+  const currentPage = Math.max(Number(page) || 1, 1);
+
+  const { rows, count } = await Appointment.findAndCountAll({
+    where,
+    include: INCLUDE,
+    order: [["scheduledAt", "DESC"]],
+    limit: perPage,
+    offset: (currentPage - 1) * perPage,
+    distinct: true,
+  });
+
+  return { appointments: rows, total: count, page: currentPage, pages: Math.ceil(count / perPage) };
+};
+
 module.exports = {
   book, addPersonal, deletePersonal, getMine, getOne, reschedule, cancel,
-  confirm, complete, getForProfessional, getAvailability,
+  confirm, decline, complete, getForProfessional, getPendingCount, getAvailability, getAllForAdmin,
 };

@@ -27,13 +27,18 @@ const cancel = async (req, res) =>
 const confirm = async (req, res) =>
   res.json({ success: true, message: "Appointment confirmed", data: await service.confirm(req.user, req.params.id) });
 
+const decline = async (req, res) =>
+  res.json({ success: true, message: "Appointment declined", data: await service.decline(req.user, req.params.id, pick(req.body, ["reason"])) });
+
 const complete = async (req, res) =>
   res.json({ success: true, message: "Appointment completed", data: await service.complete(req.user, req.params.id, pick(req.body, ["notes"])) });
 
 const getForProfessional = async (req, res) => res.json({ success: true, data: await service.getForProfessional(req.user, req.query) });
+const getPendingCount = async (req, res) => res.json({ success: true, data: await service.getPendingCount(req.user) });
 const getAvailability = async (req, res) => res.json({ success: true, data: await service.getAvailability(req.query) });
+const getAllForAdmin = async (req, res) => res.json({ success: true, data: await service.getAllForAdmin(req.query) });
 
 module.exports = {
   book, addPersonal, deletePersonal, getMine, getOne, reschedule, cancel,
-  confirm, complete, getForProfessional, getAvailability,
+  confirm, decline, complete, getForProfessional, getPendingCount, getAvailability, getAllForAdmin,
 };

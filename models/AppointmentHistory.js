@@ -10,7 +10,7 @@ module.exports = (sequelize, DataTypes) => {
       appointmentId: { type: DataTypes.UUID, allowNull: false },
       changedById: { type: DataTypes.UUID, allowNull: true }, // who did it
       action: {
-        type: DataTypes.ENUM("booked", "confirmed", "rescheduled", "cancelled", "completed"),
+        type: DataTypes.ENUM("booked", "confirmed", "rescheduled", "cancelled", "completed", "declined"),
         allowNull: false,
       },
       previousScheduledAt: { type: DataTypes.DATE, allowNull: true },
