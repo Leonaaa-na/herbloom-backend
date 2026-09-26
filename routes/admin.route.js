@@ -21,4 +21,7 @@ router.put("/messages/:id", controller.setMessageStatus);
 
 router.get("/payments", controller.getPayments);
 
+// Weekly health tip
+router.put("/articles/:id/feature", controller.featureArticle);
+
 module.exports = router;

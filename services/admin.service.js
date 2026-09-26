@@ -4,6 +4,7 @@ const {
   ContactMessage, Conversation, Reminder, Op,
 } = require("../models");
 const ApiError = require("../utils/ApiError");
+const weeklyTip = require("./weeklyTip.service");
 
 const startOfToday = () => {
   const d = new Date();
@@ -185,8 +186,14 @@ const getPayments = ({ status } = {}) =>
     limit: 200,
   });
 
+// ---------- Weekly health tip ----------
+
+// Make an article this week's tip and notify everyone who wants health tips
+const featureArticle = (id) => weeklyTip.setWeeklyTip(id);
+
 module.exports = {
   getStats, getUsers, setUserStatus,
   getProfessionals, verifyProfessional,
   getMessages, setMessageStatus, getPayments,
+  featureArticle,
 };

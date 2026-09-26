@@ -27,8 +27,19 @@ const setMessageStatus = async (req, res) =>
 
 const getPayments = async (req, res) => res.json({ success: true, data: await service.getPayments(req.query) });
 
+// Make an article this week's health tip
+const featureArticle = async (req, res) => {
+  const { article, notified } = await service.featureArticle(req.params.id);
+  res.json({
+    success: true,
+    message: `"${article.title}" is now this week's tip — ${notified} user(s) notified`,
+    data: { notified },
+  });
+};
+
 module.exports = {
   getStats, getUsers, setUserStatus,
   getProfessionals, verifyProfessional,
   getMessages, setMessageStatus, getPayments,
+  featureArticle,
 };
