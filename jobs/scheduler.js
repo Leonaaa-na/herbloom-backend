@@ -1,5 +1,6 @@
 const cron = require("node-cron");
 const reminderService = require("../services/reminder.service");
+const weeklyTipService = require("../services/weeklyTip.service");
 
 // NOTE: Ensure DB index on Reminder(completed, date, lastSentAt) for performance
 const start = () => {
@@ -19,6 +20,15 @@ const start = () => {
       await reminderService.syncAutomaticReminders();
     } catch (err) {
       console.error("Scheduler (sync) error:", err.message);
+    }
+  });
+
+  // Mondays at 09:00: feature a new health tip and tell everyone who wants them
+  cron.schedule("0 9 * * 1", async () => {
+    try {
+      await weeklyTipService.rotateWeeklyTip();
+    } catch (err) {
+      console.error("Scheduler (weekly tip) error:", err.message);
     }
   });
 

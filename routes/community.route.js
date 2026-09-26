@@ -13,6 +13,7 @@ router.get("/topics", controller.getTopics);
 
 // My own stats (must be above /users/:id)
 router.get("/me/stats", auth, controller.getMyStats);
+router.get("/me/can-post-professional", auth, controller.canPostAsProfessional);
 
 // Posts — reading works logged out (optionalAuth adds isSupported/isMine when a token is present)
 router.get("/posts", optionalAuth, controller.getPosts);

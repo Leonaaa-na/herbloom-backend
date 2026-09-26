@@ -15,6 +15,7 @@ const paymentRoutes = require("./payment.route");
 const insightsRoutes = require("./insights.routes");
 const adminRoutes = require("./admin.route");
 const pushRoutes = require("./push.route");
+const weeklyTipRoutes = require("./weeklyTip.route");
 
 module.exports = {
   userRoutes,
@@ -34,4 +35,5 @@ module.exports = {
   insightsRoutes,
   adminRoutes,
   pushRoutes,
+  weeklyTipRoutes,
 };

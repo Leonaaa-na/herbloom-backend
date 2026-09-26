@@ -41,6 +41,7 @@ app.use("/api/trackers", allRoutes.trackerRoutes);
 app.use("/api/partner", allRoutes.partnerRoutes);
 app.use("/api/pregnancy", allRoutes.pregnancyRoutes);
 app.use("/api/library", allRoutes.libraryRoutes);
+app.use("/api/weekly-tip", allRoutes.weeklyTipRoutes);
 app.use("/api/professionals", allRoutes.professionalRoutes);
 app.use("/api/chat", allRoutes.chatRoutes);
 app.use("/api/appointments", allRoutes.appointmentRoutes);

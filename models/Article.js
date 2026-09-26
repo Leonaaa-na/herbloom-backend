@@ -31,6 +31,9 @@ module.exports = (sequelize, DataTypes) => {
       isPremium: { type: DataTypes.BOOLEAN, defaultValue: false },
       isPublished: { type: DataTypes.BOOLEAN, defaultValue: true },
       views: { type: DataTypes.INTEGER, defaultValue: 0 },
+      // Weekly health tip
+      isWeeklyTip: { type: DataTypes.BOOLEAN, defaultValue: false }, // the one currently featured
+      lastFeaturedAt: { type: DataTypes.DATE, allowNull: true }, // so the rotation doesn't repeat itself
     },
     {
       tableName: "articles",

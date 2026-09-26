@@ -36,11 +36,15 @@ const isVerifiedPro = async (user) => {
 
 const createPost = async (user, data, file) => {
   const professional = await isVerifiedPro(user);
+  // A verified professional chooses whether this is professional content.
+  // Default to yes when they don't say, so existing behaviour is unchanged.
+  const asProfessional = professional && data.asProfessional !== false;
+
   return Post.create({
     ...data,
     authorId: user.id,
-    isProfessionalContent: professional, // verified professionals' posts show in "Professional Health Content"
-    isAnonymous: professional ? false : !!data.isAnonymous,
+    isProfessionalContent: asProfessional,
+    isAnonymous: asProfessional ? false : !!data.isAnonymous, // professional content is always attributed
     ...(file && { imageUrl: file.path, imagePublicId: file.filename }),
   });
 };
@@ -224,7 +228,10 @@ const getMyStats = async (userId) => {
   return { posts, supported, comments };
 };
 
+// Can this account publish as professional content?
+const canPostAsProfessional = async (user) => ({ canPostAsProfessional: await isVerifiedPro(user) });
+
 module.exports = {
   TOPICS, createPost, getPosts, getPost, updatePost, deletePost, toggleSupport,
-  getComments, addComment, deleteComment, getUserProfile, getMyStats,
+  getComments, addComment, deleteComment, getUserProfile, getMyStats, canPostAsProfessional,
 };

@@ -14,6 +14,7 @@ module.exports = (sequelize, DataTypes) => {
       medicationNotifications: { type: DataTypes.BOOLEAN, defaultValue: true },
       appointmentNotifications: { type: DataTypes.BOOLEAN, defaultValue: true },
       wellnessNotifications: { type: DataTypes.BOOLEAN, defaultValue: true },
+      healthTipNotifications: { type: DataTypes.BOOLEAN, defaultValue: true }, // the weekly health tip
       notificationSound: { type: DataTypes.BOOLEAN, defaultValue: true },
       vibration: { type: DataTypes.BOOLEAN, defaultValue: true },
       emailNotifications: { type: DataTypes.BOOLEAN, defaultValue: true }, // appointment / reset emails
